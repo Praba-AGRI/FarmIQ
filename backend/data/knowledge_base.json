@@ -1,0 +1,18 @@
+{
+  "approved_knowledge": {
+    "source": ["ICAR", "TNAU"],
+    "notes": [
+      "Flowering is a critical irrigation stage (TNAU)",
+      "High humidity favors yellow rust development (ICAR)",
+      "Neem oil is recommended under organic farming (TNAU)",
+      "Avoid chemical pesticides during flowering unless infestation is severe",
+      "Soil moisture should be maintained at 60-70% during vegetative stage (ICAR)",
+      "Temperature range of 25-30°C is optimal for most crops (TNAU)",
+      "Irrigation should be done early morning or late evening to reduce water loss (TNAU)",
+      "FYM (Farm Yard Manure) application improves soil structure and nutrient content (ICAR)",
+      "Regular monitoring helps in early pest detection (TNAU)",
+      "Crop rotation helps in pest and disease management (ICAR)"
+    ]
+  }
+}
+
