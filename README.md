@@ -2,25 +2,7 @@
 
 A complete React-based frontend dashboard and Python FastAPI backend for an AI-powered agricultural decision support system. This dashboard visualizes real-time field sensor data, displays AI-generated recommendations, provides an explainable AI reasoning assistant, and shows weather-based alerts for farmers.
 
-## 🚀 Quick Local Preview
 
-### Start Backend (Terminal 1):
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
-```
-
-### Start Frontend (Terminal 2):
-```bash
-npm install
-npm run dev
-```
-
-### Open Browser:
-Visit **http://localhost:5173**
-
-See [LOCAL_PREVIEW.md](LOCAL_PREVIEW.md) for detailed instructions.
 
 ## Features
 
@@ -55,19 +37,6 @@ See [LOCAL_PREVIEW.md](LOCAL_PREVIEW.md) for detailed instructions.
 - Node.js (v16 or higher)
 - npm or yarn
 
-### Installation
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Start the development server:
-```bash
-npm run dev
-```
-
-3. Open your browser and navigate to `http://localhost:5173`
 
 ### Build for Production
 
