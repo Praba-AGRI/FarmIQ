@@ -14,4 +14,5 @@ COPY backend/ .
 EXPOSE $PORT
 
 # Start the application
-CMD uvicorn app:app --host 0.0.0.0 --port $PORT
+# Use sh -c to properly expand $PORT environment variable
+CMD sh -c "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"
