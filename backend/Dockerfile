@@ -18,4 +18,5 @@ RUN chmod +x /entrypoint.sh
 EXPOSE 8000
 
 # Start the application using entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+# Use shell form to ensure environment variables are expanded
+ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
