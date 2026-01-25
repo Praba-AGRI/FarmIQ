@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the backend application
 COPY backend/ .
 
-# Expose port
-EXPOSE $PORT
+# Expose port (Railway will set PORT at runtime)
+EXPOSE 8000
 
 # Start the application
 # Use shell form to allow environment variable substitution
