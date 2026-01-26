@@ -3,12 +3,12 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy requirements first for better caching
-# Build context should be backend/ directory
-COPY requirements.txt .
+# Build context is repo root, so copy from backend/
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the backend application
-COPY . .
+COPY backend/ .
 
 # Expose port (Railway will set PORT at runtime)
 EXPOSE 8000
