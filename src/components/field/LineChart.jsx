@@ -39,17 +39,17 @@ const LineChart = ({ data, dataKey, name, color = '#16a34a', unit = '' }) => {
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.25} />
-          <XAxis 
-            dataKey="time" 
+        <XAxis 
+          dataKey="time" 
             tick={{ fontSize: isMobile ? 9 : 11, fill: '#6b7280' }}
-            angle={-45}
-            textAnchor="end"
+          angle={-45}
+          textAnchor="end"
             height={isMobile ? 45 : 50}
             stroke="#9ca3af"
             interval={isMobile ? 'preserveStartEnd' : 'equidistantPreserveStart'}
             tickMargin={8}
-          />
-          <YAxis 
+        />
+        <YAxis 
             tick={{ fontSize: isMobile ? 9 : 11, fill: '#6b7280' }}
             label={{ 
               value: unit, 
@@ -59,8 +59,8 @@ const LineChart = ({ data, dataKey, name, color = '#16a34a', unit = '' }) => {
             }}
             stroke="#9ca3af"
             width={isMobile ? 35 : 45}
-          />
-          <Tooltip 
+        />
+        <Tooltip 
             formatter={(value) => [`${Number(value).toFixed(1)} ${unit}`, name]}
             labelStyle={{ color: '#374151', fontWeight: 'bold', fontSize: isMobile ? 10 : 11 }}
             contentStyle={{ 
@@ -72,24 +72,24 @@ const LineChart = ({ data, dataKey, name, color = '#16a34a', unit = '' }) => {
               boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}
             cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '3 3', opacity: 0.4 }}
-          />
+        />
           <Legend 
             wrapperStyle={{ fontSize: isMobile ? 10 : 11, paddingTop: '8px' }}
             iconType="line"
             iconSize={12}
           />
-          <Line 
-            type="monotone" 
-            dataKey={dataKey} 
-            name={name}
-            stroke={color} 
+        <Line 
+          type="monotone" 
+          dataKey={dataKey} 
+          name={name}
+          stroke={color} 
             strokeWidth={isMobile ? 2 : 2.5}
             dot={false}
             activeDot={{ r: isMobile ? 4 : 5, stroke: color, strokeWidth: 2, fill: 'white' }}
             animationDuration={600}
-          />
-        </RechartsLineChart>
-      </ResponsiveContainer>
+        />
+      </RechartsLineChart>
+    </ResponsiveContainer>
     </div>
   );
 };

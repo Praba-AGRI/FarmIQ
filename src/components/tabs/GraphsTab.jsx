@@ -256,7 +256,7 @@ const GraphsTab = ({ fieldId }) => {
                     <p className="text-xs text-gray-600">Time series data</p>
                   </div>
                 </div>
-              </div>
+        </div>
 
               {/* Statistics Cards */}
               <div className="grid grid-cols-3 gap-2 mb-3">
@@ -271,26 +271,26 @@ const GraphsTab = ({ fieldId }) => {
                   <p className="text-sm font-bold text-gray-900">
                     {stats.avg.toFixed(1)}{chart.unit}
                   </p>
-                </div>
+        </div>
                 <div className="bg-white bg-opacity-70 rounded-lg p-2 border border-white border-opacity-50">
                   <p className="text-xs text-gray-600 mb-1">Max</p>
                   <p className="text-sm font-bold text-gray-900">
                     {stats.max.toFixed(1)}{chart.unit}
                   </p>
-                </div>
-              </div>
+        </div>
+        </div>
 
               {/* Chart */}
               <div className="mt-2 -mx-2 sm:-mx-1">
-                <LineChart
-                  data={chartData}
+          <LineChart
+            data={chartData}
                   dataKey={chart.key}
                   name={chart.label}
                   color={chart.color}
                   unit={chart.unit}
-                />
-              </div>
-            </div>
+          />
+        </div>
+        </div>
           );
         })}
       </div>

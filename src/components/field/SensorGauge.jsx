@@ -72,11 +72,11 @@ const SensorGauge = ({ label, value, unit, min = 0, max = 100, color = 'primary'
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {hasData ? (
             <>
-              <span className={`text-2xl font-bold ${colorClasses[color]}`}>
-                {value.toFixed(1)}
-              </span>
-              {unit && (
-                <span className="text-xs text-gray-500">{unit}</span>
+          <span className={`text-2xl font-bold ${colorClasses[color]}`}>
+            {value.toFixed(1)}
+          </span>
+          {unit && (
+            <span className="text-xs text-gray-500">{unit}</span>
               )}
             </>
           ) : (
@@ -93,7 +93,7 @@ const SensorGauge = ({ label, value, unit, min = 0, max = 100, color = 'primary'
         </div>
       </div>
       {label && (
-        <p className="mt-2 text-sm font-medium text-gray-700 text-center">{label}</p>
+      <p className="mt-2 text-sm font-medium text-gray-700 text-center">{label}</p>
       )}
     </div>
   );

@@ -107,7 +107,7 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
     if (diff < 86400) {
       const hours = Math.floor(diff / 3600);
       return `${hours} ${hours > 1 ? t('hoursAgo') : t('hourAgo')}`;
-    }
+  }
     return date.toLocaleString();
   };
 
@@ -240,14 +240,14 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <SensorGauge
+          <SensorGauge
                 label=""
                 value={displayData.airTemperature}
-                unit="°C"
-                min={0}
-                max={50}
-                color="orange"
-              />
+            unit="°C"
+            min={0}
+            max={50}
+            color="orange"
+          />
             </div>
             <div className="mt-4 pt-4 border-t border-orange-200">
               <div className="flex justify-between text-sm">
@@ -282,14 +282,14 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <SensorGauge
+          <SensorGauge
                 label=""
                 value={displayData.relativeHumidity}
-                unit="%"
-                min={0}
-                max={100}
-                color="blue"
-              />
+            unit="%"
+            min={0}
+            max={100}
+            color="blue"
+          />
             </div>
             <div className="mt-4 pt-4 border-t border-blue-200">
               <div className="flex justify-between text-sm">
@@ -324,14 +324,14 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <SensorGauge
+          <SensorGauge
                 label=""
                 value={displayData.soilMoisture}
-                unit="%"
-                min={0}
-                max={100}
-                color="green"
-              />
+            unit="%"
+            min={0}
+            max={100}
+            color="green"
+          />
             </div>
             <div className="mt-4 pt-4 border-t border-green-200">
               <div className="flex justify-between text-sm">
@@ -341,7 +341,7 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
             </div>
           </div>
         </div>
-      </div>
+        </div>
 
       {/* Secondary Sensors */}
       <div>
@@ -375,13 +375,13 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <SoilTemperatureGauge
+          <SoilTemperatureGauge
                 label=""
                 value={displayData.soilTemperature}
-                unit="°C"
-                min={0}
-                max={50}
-              />
+            unit="°C"
+            min={0}
+            max={50}
+          />
             </div>
             <div className="mt-4 pt-4 border-t border-amber-200">
               <div className="flex justify-between text-sm">
@@ -408,13 +408,13 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <LightIntensityGauge
+          <LightIntensityGauge
                 label=""
                 value={displayData.lightIntensity}
-                unit="lux"
-                min={0}
-                max={1000}
-              />
+            unit="lux"
+            min={0}
+            max={1000}
+          />
             </div>
             <div className="mt-4 pt-4 border-t border-yellow-200">
               <div className="flex justify-between text-sm">
@@ -445,14 +445,14 @@ const SensorDataTab = ({ fieldId, sensorNodeId }) => {
               </span>
             </div>
             <div className="flex justify-center">
-              <SensorGauge
+            <SensorGauge
                 label=""
                 value={displayData.windSpeed}
-                unit="km/h"
-                min={0}
-                max={50}
-                color="blue"
-              />
+              unit="km/h"
+              min={0}
+              max={50}
+              color="blue"
+            />
             </div>
             <div className="mt-4 pt-4 border-t border-cyan-200">
               <div className="flex justify-between text-sm">
