@@ -4,7 +4,6 @@ import { sensorService } from '../../services/sensorService';
 import { TIME_RANGES } from '../../utils/constants';
 import LineChart from '../field/LineChart';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorMessage from '../common/ErrorMessage';
 
 const GraphsTab = ({ fieldId }) => {
   const { t } = useLanguage();
@@ -54,19 +53,45 @@ const GraphsTab = ({ fieldId }) => {
       setLoading(true);
       setError('');
       
-      const response = await sensorService.getHistoricalData(fieldId, timeRange);
-      const transformedData = transformSensorData(response.data, timeRange);
+      // Try requested range first
+      let response;
+      let transformedData = [];
       
-      if (transformedData.length === 0) {
-        setError('No sensor data available for the selected time range');
-        setChartData(null);
-      } else {
-        setChartData(transformedData);
+      try {
+        response = await sensorService.getHistoricalData(fieldId, timeRange);
+        transformedData = transformSensorData(response.data, timeRange);
+      } catch (err) {
+        console.error('Error fetching data for requested range:', err);
       }
+      
+      // If no data, try fallback ranges
+      if (transformedData.length === 0) {
+        const fallbackRanges = [TIME_RANGES.LAST_7D, TIME_RANGES.LAST_30D];
+        for (const fallbackRange of fallbackRanges) {
+          try {
+            const fallbackResponse = await sensorService.getHistoricalData(fieldId, fallbackRange);
+            const fallbackData = transformSensorData(fallbackResponse.data, fallbackRange);
+            if (fallbackData.length > 0) {
+              transformedData = fallbackData;
+              setError(`No data for selected time range. Showing available past readings.`);
+              break;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      
+      // If still no data, set appropriate error message
+      if (transformedData.length === 0) {
+        setError('No sensor data available. Please ensure sensor is connected and sending data.');
+      }
+      
+      setChartData(transformedData);
     } catch (err) {
       console.error('Error fetching chart data:', err);
       setError(err.response?.data?.detail || 'Failed to load chart data. Please ensure sensor is connected and sending data.');
-      setChartData(null);
+      setChartData([]);
     } finally {
       setLoading(false);
     }
@@ -74,9 +99,9 @@ const GraphsTab = ({ fieldId }) => {
 
   // Calculate statistics for each metric
   const calculateStats = (dataKey) => {
-    if (!chartData || chartData.length === 0) return { min: 0, max: 0, avg: 0 };
+    if (!chartData || chartData.length === 0) return { min: null, max: null, avg: null };
     const values = chartData.map(d => d[dataKey]).filter(v => v !== null && v !== undefined);
-    if (values.length === 0) return { min: 0, max: 0, avg: 0 };
+    if (values.length === 0) return { min: null, max: null, avg: null };
     const min = Math.min(...values);
     const max = Math.max(...values);
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -126,17 +151,7 @@ const GraphsTab = ({ fieldId }) => {
     </svg>
   );
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (error) {
-    return <ErrorMessage message={error} onRetry={fetchChartData} />;
-  }
-
-  if (!chartData) {
-    return <div className="text-center py-8 text-gray-600">No chart data available</div>;
-  }
+  const hasData = chartData && chartData.length > 0;
 
   const charts = [
     {
@@ -201,6 +216,10 @@ const GraphsTab = ({ fieldId }) => {
     },
   ];
 
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -212,6 +231,9 @@ const GraphsTab = ({ fieldId }) => {
           <div>
             <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{t('graphsTrends')}</h3>
             <p className="text-sm text-gray-600">Historical sensor data visualization</p>
+            {error && (
+              <p className="text-xs text-amber-600 mt-1">{error}</p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -277,33 +299,45 @@ const GraphsTab = ({ fieldId }) => {
                 <div className="bg-white bg-opacity-70 rounded-lg p-2 border border-white border-opacity-50">
                   <p className="text-xs text-gray-600 mb-1">Min</p>
                   <p className="text-sm font-bold text-gray-900">
-                    {stats.min.toFixed(1)}{chart.unit}
+                    {stats.min !== null ? `${stats.min.toFixed(1)}${chart.unit}` : 'N/A'}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-70 rounded-lg p-2 border border-white border-opacity-50">
                   <p className="text-xs text-gray-600 mb-1">Avg</p>
                   <p className="text-sm font-bold text-gray-900">
-                    {stats.avg.toFixed(1)}{chart.unit}
+                    {stats.avg !== null ? `${stats.avg.toFixed(1)}${chart.unit}` : 'N/A'}
                   </p>
-        </div>
+                </div>
                 <div className="bg-white bg-opacity-70 rounded-lg p-2 border border-white border-opacity-50">
                   <p className="text-xs text-gray-600 mb-1">Max</p>
                   <p className="text-sm font-bold text-gray-900">
-                    {stats.max.toFixed(1)}{chart.unit}
+                    {stats.max !== null ? `${stats.max.toFixed(1)}${chart.unit}` : 'N/A'}
                   </p>
-        </div>
-        </div>
+                </div>
+              </div>
 
               {/* Chart */}
               <div className="mt-2 -mx-2 sm:-mx-1">
-          <LineChart
-            data={chartData}
-                  dataKey={chart.key}
-                  name={chart.label}
-                  color={chart.color}
-                  unit={chart.unit}
-          />
-        </div>
+                {hasData ? (
+                  <LineChart
+                    data={chartData}
+                    dataKey={chart.key}
+                    name={chart.label}
+                    color={chart.color}
+                    unit={chart.unit}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-[250px] text-gray-500">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <p className="text-sm font-medium">No data available</p>
+                      <p className="text-xs text-gray-400 mt-1">No sensor readings for this time range</p>
+                    </div>
+                  </div>
+                )}
+              </div>
         </div>
           );
         })}
