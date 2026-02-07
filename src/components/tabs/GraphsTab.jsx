@@ -17,45 +17,59 @@ const GraphsTab = ({ fieldId }) => {
     fetchChartData();
   }, [fieldId, timeRange]);
 
+  const transformSensorData = (backendData, range) => {
+    if (!backendData || !Array.isArray(backendData) || backendData.length === 0) {
+      return [];
+    }
+
+    return backendData.map(item => {
+      // Format timestamp based on range
+      const date = new Date(item.timestamp);
+      let timeLabel;
+      
+      if (range === TIME_RANGES.LAST_24H) {
+        // Format as "HH:MM" for 24h range
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        timeLabel = `${hours}:${minutes}`;
+      } else {
+        // Format as "MMM DD" for 7d/30d ranges
+        timeLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      
+      return {
+        time: timeLabel,
+        temperature: item.air_temp,
+        humidity: item.air_humidity,
+        soilMoisture: item.soil_moisture,
+        soilTemperature: item.soil_temp,
+        lightIntensity: item.light_lux,
+        windSpeed: item.wind_speed || null,
+      };
+    });
+  };
+
   const fetchChartData = async () => {
     try {
       setLoading(true);
       setError('');
-      // Mock data for demonstration
-      const mockData = generateMockData(timeRange);
-      setChartData(mockData);
-      // const response = await sensorService.getHistoricalData(fieldId, timeRange);
-      // setChartData(response.data);
+      
+      const response = await sensorService.getHistoricalData(fieldId, timeRange);
+      const transformedData = transformSensorData(response.data, timeRange);
+      
+      if (transformedData.length === 0) {
+        setError('No sensor data available for the selected time range');
+        setChartData(null);
+      } else {
+        setChartData(transformedData);
+      }
     } catch (err) {
-      setError('Failed to load chart data');
+      console.error('Error fetching chart data:', err);
+      setError(err.response?.data?.detail || 'Failed to load chart data. Please ensure sensor is connected and sending data.');
+      setChartData(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateMockData = (range) => {
-    const dataPoints = range === TIME_RANGES.LAST_24H ? 24 : range === TIME_RANGES.LAST_7D ? 7 : 30;
-    const data = [];
-    
-    for (let i = 0; i < dataPoints; i++) {
-      const time = range === TIME_RANGES.LAST_24H 
-        ? `${i}:00`
-        : range === TIME_RANGES.LAST_7D
-        ? `Day ${i + 1}`
-        : `Day ${i + 1}`;
-      
-      data.push({
-        time,
-        temperature: 25 + Math.random() * 10,
-        humidity: 50 + Math.random() * 30,
-        soilMoisture: 40 + Math.random() * 30,
-        soilTemperature: 20 + Math.random() * 15,
-        lightIntensity: 200 + Math.random() * 800,
-        windSpeed: 5 + Math.random() * 20,
-      });
-    }
-    
-    return data;
   };
 
   // Calculate statistics for each metric
