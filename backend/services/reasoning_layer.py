@@ -23,23 +23,31 @@ import json
 import os
 from datetime import datetime
 from typing import List, Dict, Optional
-from openai import OpenAI
+from openai import AsyncOpenAI, APIError, RateLimitError, APITimeoutError
 
 # -------------------------------------------------
-# OpenAI Client
+# OpenRouter Client
 # -------------------------------------------------
 # Get API key from environment variable
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 client = None
 
-if OPENAI_API_KEY:
+if OPENROUTER_API_KEY:
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        # OpenRouter client using OpenAI SDK
+        client = AsyncOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENROUTER_API_KEY,
+            default_headers={
+                 "HTTP-Referer": os.getenv("OPENROUTER_HTTP_REFERER", ""),
+                 "X-Title": os.getenv("OPENROUTER_APP_NAME", "FarmIQ AI Assistant"),
+            }
+        )
     except Exception as e:
-        print(f"Warning: Failed to initialize OpenAI client: {e}")
+        print(f"Warning: Failed to initialize OpenRouter client: {e}")
         client = None
 else:
-    print("Warning: OPENAI_API_KEY environment variable is not set. OpenAI API will not be available.")
+    print("Warning: OPENROUTER_API_KEY environment variable is not set. OpenRouter API will not be available.")
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -107,7 +115,7 @@ def build_memory_context(advisory_history: List[Dict], max_entries: int = 3) -> 
 # -------------------------------------------------
 # MAIN REASONING FUNCTION
 # -------------------------------------------------
-def reasoning_agri_assistant(
+async def reasoning_agri_assistant(
     farmer_profile: Dict,
     field_context: Dict,
     ai_agent_output: Dict,
@@ -131,17 +139,17 @@ def reasoning_agri_assistant(
     Output:
     - Human-readable advisory / answer
     """
-    # Check if OpenAI client is available
+    # Check if OpenRouter client is available
     if not client:
         error_msg = (
-            "OpenAI API is not configured. Please set the OPENAI_API_KEY environment variable.\n\n"
+            "OpenRouter API is not configured. Please set the OPENROUTER_API_KEY environment variable.\n\n"
             "To fix this:\n"
-            "1. Get an API key from https://platform.openai.com/api-keys\n"
+            "1. Get an API key from https://openrouter.ai/keys\n"
             "2. Set it as an environment variable:\n"
-            "   - Windows (PowerShell): $env:OPENAI_API_KEY='sk-your-key-here'\n"
-            "   - Windows (CMD): set OPENAI_API_KEY=sk-your-key-here\n"
-            "   - Linux/Mac: export OPENAI_API_KEY='sk-your-key-here'\n"
-            "3. Or create a .env file in the backend folder with: OPENAI_API_KEY=sk-your-key-here\n"
+            "   - Windows (PowerShell): $env:OPENROUTER_API_KEY='sk-or-your-key-here'\n"
+            "   - Windows (CMD): set OPENROUTER_API_KEY=sk-or-your-key-here\n"
+            "   - Linux/Mac: export OPENROUTER_API_KEY='sk-or-your-key-here'\n"
+            "3. Or create a .env file in the backend folder with: OPENROUTER_API_KEY=sk-or-your-key-here\n"
             "4. Restart the backend server"
         )
         return error_msg
@@ -172,49 +180,56 @@ def reasoning_agri_assistant(
             "instruction": "Use available data when present. If data is marked as not available, provide general agricultural advice based on ICAR/TNAU knowledge and the farmer's question."
         }
 
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        # Call OpenRouter API with OpenAI SDK
+        response = await client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)}
             ],
-            temperature=0.2,
-            max_tokens=1000
+            extra_body={"reasoning": {"enabled": True}},
         )
+        
+        # Extract the assistant message
+        message = response.choices[0].message
+        response_content = message.content
 
-        return response.choices[0].message.content
+        # Note: reasoning_details might be available in message.reasoning_details if supported by model/SDK version
+        # We process response_content primarily
+        return response_content
+
     except Exception as e:
         # Log the error for debugging
         error_type = type(e).__name__
         error_details = str(e)
         
         # Provide more helpful error messages
-        if "api_key" in error_details.lower() or "authentication" in error_details.lower():
-            error_msg = (
-                f"OpenAI API authentication failed. Please check your API key.\n\n"
+        if "api_key" in error_details.lower() or "authentication" in error_details.lower() or "401" in error_details:
+             error_msg = (
+                f"OpenRouter API authentication failed. Please check your API key.\n\n"
                 f"Error: {error_type}: {error_details}\n\n"
                 f"To fix:\n"
-                f"1. Verify your API key at https://platform.openai.com/api-keys\n"
-                f"2. Make sure the key is set correctly: OPENAI_API_KEY=sk-your-key-here\n"
-                f"3. Check if your OpenAI account has credits\n"
+                f"1. Verify your API key at https://openrouter.ai/keys\n"
+                f"2. Make sure the key is set correctly: OPENROUTER_API_KEY=sk-or-your-key-here\n"
+                f"3. Check if your OpenRouter account has credits\n"
                 f"4. Restart the backend server"
             )
-        elif "rate limit" in error_details.lower():
-            error_msg = (
-                f"OpenAI API rate limit exceeded. Please try again in a moment.\n\n"
+        elif "rate limit" in error_details.lower() or "429" in error_details:
+             error_msg = (
+                f"OpenRouter API rate limit exceeded. Please try again in a moment.\n\n"
                 f"Error: {error_type}: {error_details}"
             )
         else:
-            error_msg = (
-                f"OpenAI API error occurred.\n\n"
+             error_msg = (
+                f"OpenRouter API error occurred.\n\n"
                 f"Error Type: {error_type}\n"
                 f"Error Details: {error_details}\n\n"
                 f"Please check:\n"
                 f"1. Your internet connection\n"
-                f"2. OpenAI API status: https://status.openai.com/\n"
+                f"2. OpenRouter API status: https://openrouter.ai/\n"
                 f"3. Your API key and account credits"
             )
         
         return error_msg
+
 

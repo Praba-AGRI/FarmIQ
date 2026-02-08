@@ -6,12 +6,32 @@ Provides AI-powered explanations and Q&A for weather-related questions.
 """
 
 import os
+import json
 from typing import Dict, Optional
-from services.reasoning_layer import client as openai_client, SYSTEM_PROMPT
+from openai import AsyncOpenAI
+from services.reasoning_layer import SYSTEM_PROMPT
 from services.weather_service import (
     get_onecall_weather, transform_onecall_response, 
     get_weather_overview
 )
+
+# OpenRouter client for weather AI
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+openrouter_client = None
+
+if OPENROUTER_API_KEY:
+    try:
+        openrouter_client = AsyncOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENROUTER_API_KEY,
+            default_headers={
+                "HTTP-Referer": os.getenv("OPENROUTER_HTTP_REFERER", ""),
+                "X-Title": os.getenv("OPENROUTER_APP_NAME", "FarmIQ Weather AI"),
+            }
+        )
+    except Exception as e:
+        print(f"Warning: Failed to initialize OpenRouter client for weather AI: {e}")
+        openrouter_client = None
 
 
 async def generate_weather_summary(lat: float, lon: float) -> Dict[str, str]:
@@ -244,12 +264,12 @@ async def answer_weather_question(question: str, lat: float, lon: float) -> Dict
             "overview_summary": overview_data.get("summary") or overview_data.get("overview", "")
         }
         
-        if not openai_client:
+        if not openrouter_client:
             # Fallback response
             return {
                 "answer": f"Current weather: {weather_context['condition']}, {weather_context['temperature']}°C. "
-                         f"Rain in last hour: {weather_context['rain']}mm. "
-                         f"Wind speed: {weather_context['wind_speed']} km/h.",
+                          f"Rain in last hour: {weather_context['rain']}mm. "
+                          f"Wind speed: {weather_context['wind_speed']} km/h.",
                 "confidence": 0.5,
                 "weather_context": weather_context
             }
@@ -299,16 +319,20 @@ Provide a clear, helpful answer to the farmer's question considering ALL of the 
 
 Keep the answer concise (2-4 sentences) but comprehensive, considering all weather parameters and their implications for farming."""
         
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
+        # Call OpenRouter API with OpenAI SDK
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ]
+        
+        response = await openrouter_client.chat.completions.create(
+            model="openai/gpt-oss-120b:free",
+            messages=messages,
             max_tokens=200,
-            temperature=0.7
+            extra_body={"reasoning": {"enabled": True}}
         )
         
+        # Extract response
         answer = response.choices[0].message.content
         
         # Calculate confidence based on available data

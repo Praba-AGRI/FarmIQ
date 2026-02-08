@@ -307,25 +307,25 @@ const GraphsTab = ({ fieldId }) => {
                   <p className="text-sm font-bold text-gray-900">
                     {stats.avg !== null ? `${stats.avg.toFixed(1)}${chart.unit}` : 'N/A'}
                   </p>
-                </div>
+        </div>
                 <div className="bg-white bg-opacity-70 rounded-lg p-2 border border-white border-opacity-50">
                   <p className="text-xs text-gray-600 mb-1">Max</p>
                   <p className="text-sm font-bold text-gray-900">
                     {stats.max !== null ? `${stats.max.toFixed(1)}${chart.unit}` : 'N/A'}
                   </p>
-                </div>
-              </div>
+        </div>
+        </div>
 
               {/* Chart */}
               <div className="mt-2 -mx-2 sm:-mx-1">
                 {hasData ? (
-                  <LineChart
-                    data={chartData}
-                    dataKey={chart.key}
-                    name={chart.label}
-                    color={chart.color}
-                    unit={chart.unit}
-                  />
+          <LineChart
+            data={chartData}
+                  dataKey={chart.key}
+                  name={chart.label}
+                  color={chart.color}
+                  unit={chart.unit}
+          />
                 ) : (
                   <div className="flex items-center justify-center h-[250px] text-gray-500">
                     <div className="text-center">
@@ -337,7 +337,7 @@ const GraphsTab = ({ fieldId }) => {
                     </div>
                   </div>
                 )}
-              </div>
+        </div>
         </div>
           );
         })}

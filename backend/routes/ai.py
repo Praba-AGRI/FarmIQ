@@ -225,7 +225,7 @@ async def get_ai_recommendations(
     }
     
     # Call reasoning layer to generate human-readable advisory
-    ai_reasoning_text = reasoning_agri_assistant(
+    ai_reasoning_text = await reasoning_agri_assistant(
         farmer_profile=farmer_profile,
         field_context=field_context,
         ai_agent_output=formatted_ai_output,
@@ -437,7 +437,7 @@ async def ai_chat(
         }
     
     # Call reasoning layer with farmer question
-    ai_response = reasoning_agri_assistant(
+    ai_response = await reasoning_agri_assistant(
         farmer_profile=farmer_profile,
         field_context=field_context,
         ai_agent_output=formatted_ai_output,
