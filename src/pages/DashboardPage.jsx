@@ -42,7 +42,7 @@ const DashboardPage = ({ demoMode = false }) => {
       // Mock data for demonstration - replace with actual API call
       // const response = await recommendationService.getRecommendations(fieldId);
       // return response.data.recommendations || [];
-      
+
       // Mock recommendations data
       if (fieldId === 1) {
         return [
@@ -83,7 +83,7 @@ const DashboardPage = ({ demoMode = false }) => {
       // Mock data for demonstration - replace with actual API call
       // const response = await weatherService.getAlerts(location);
       // return response.data.alerts || [];
-      
+
       // Mock weather alerts data
       if (location === 'Tamil Nadu, India') {
         return [
@@ -115,39 +115,25 @@ const DashboardPage = ({ demoMode = false }) => {
 
   const fetchSensorData = async (fieldId) => {
     try {
-      // Mock data for demonstration - replace with actual API call
-      // const response = await sensorService.getCurrentReadings(fieldId);
-      // const backendData = response.data;
-      // return {
-      //   airTemperature: backendData.air_temp,
-      //   relativeHumidity: backendData.air_humidity,
-      //   soilMoisture: backendData.soil_moisture,
-      //   soilTemperature: backendData.soil_temp,
-      //   lightIntensity: backendData.light_lux,
-      //   windSpeed: backendData.wind_speed || null,
-      // };
-      
-      // Mock sensor data - different values for different fields
-      if (fieldId === 1) {
-        return {
-          airTemperature: 28.5,
-          relativeHumidity: 65,
-          soilMoisture: 45,
-          soilTemperature: 26.2,
-          lightIntensity: 850,
-          windSpeed: 12.0,
-        };
-      } else {
-        return {
-          airTemperature: 30.2,
-          relativeHumidity: 70,
-          soilMoisture: 65,
-          soilTemperature: 28.5,
-          lightIntensity: 920,
-          windSpeed: 8.5,
-        };
-      }
+      const response = await sensorService.getCurrentReadings(fieldId);
+      const backendData = response.data;
+
+      // If we get an empty response or error, backendData might be null/empty
+      if (!backendData) return null;
+
+      return {
+        airTemperature: backendData.air_temp,
+        relativeHumidity: backendData.air_humidity,
+        soilMoisture: backendData.soil_moisture,
+        soilTemperature: backendData.soil_temp,
+        lightIntensity: backendData.light_lux,
+        windSpeed: backendData.wind_speed || null,
+      };
     } catch (err) {
+      // If 404 (no data found), simply return null so UI shows "No Data"
+      if (err.response && err.response.status === 404) {
+        return null;
+      }
       console.error('Failed to fetch sensor data:', err);
       return null;
     }
@@ -158,7 +144,7 @@ const DashboardPage = ({ demoMode = false }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Mock demo fields data
       const mockFieldsData = [
         {
@@ -215,8 +201,8 @@ const DashboardPage = ({ demoMode = false }) => {
           // Update soil moisture from sensor data if available
           const updatedSoilMoisture = sensorData?.soilMoisture || field.soilMoisture;
           // Determine if there are alerts
-          const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) || 
-                          (weatherAlerts && weatherAlerts.length > 0);
+          const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) ||
+            (weatherAlerts && weatherAlerts.length > 0);
 
           return {
             ...field,
@@ -242,11 +228,11 @@ const DashboardPage = ({ demoMode = false }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Fetch fields from API
       const response = await fieldService.getAllFields();
       const backendFields = response.data || [];
-      
+
       // Map backend format to frontend format
       // Note: Backend doesn't store location in field, use user's location
       const userLocation = user?.location || 'Tamil Nadu, India';
@@ -255,7 +241,7 @@ const DashboardPage = ({ demoMode = false }) => {
         name: field.name,
         cropName: field.crop,
         cropStage: 'Vegetative', // Default stage (not stored in backend yet)
-        soilMoisture: 50, // Default, will be updated from sensor data
+        soilMoisture: null, // Default, will be updated from sensor data
         hasAlert: false, // Will be determined from recommendations/alerts
         location: userLocation, // Use user's location
         sensor_node_id: field.sensor_node_id, // Include sensor node ID from backend
@@ -283,8 +269,8 @@ const DashboardPage = ({ demoMode = false }) => {
           // Update soil moisture from sensor data if available
           const updatedSoilMoisture = sensorData?.soilMoisture || field.soilMoisture;
           // Determine if there are alerts (urgent recommendations or weather alerts)
-          const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) || 
-                          (weatherAlerts && weatherAlerts.length > 0);
+          const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) ||
+            (weatherAlerts && weatherAlerts.length > 0);
 
           return {
             ...field,
@@ -324,7 +310,7 @@ const DashboardPage = ({ demoMode = false }) => {
     try {
       setIsSubmitting(true);
       setError('');
-      
+
       // Call API to create field (location is not stored in field, use from form or user profile)
       const response = await fieldService.createField({
         name: fieldData.name,
@@ -333,19 +319,19 @@ const DashboardPage = ({ demoMode = false }) => {
         area_acres: fieldData.area_acres,
         sensor_node_id: fieldData.sensor_node_id,
       });
-      
+
       const createdField = response.data;
-      
+
       // Get user location for weather data (location is stored in user profile, not field)
       const userLocation = user?.location || fieldData.location || 'Tamil Nadu, India';
-      
+
       // Map backend response to frontend format
       const newField = {
         id: createdField.field_id,
         name: createdField.name,
         cropName: createdField.crop,
         cropStage: 'Vegetative', // Default stage
-        soilMoisture: 50, // Default value, will be updated from sensor data
+        soilMoisture: null, // Default value, will be updated from sensor data
         hasAlert: false,
         location: userLocation, // Use user's location or form location
         sensor_node_id: createdField.sensor_node_id, // Include sensor node ID from backend
@@ -373,8 +359,8 @@ const DashboardPage = ({ demoMode = false }) => {
       // Update soil moisture from sensor data if available
       const updatedSoilMoisture = sensorData?.soilMoisture || newField.soilMoisture;
       // Determine if there are alerts
-      const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) || 
-                      (weatherAlerts && weatherAlerts.length > 0);
+      const hasAlert = sortedRecommendations.some(rec => rec.status === RECOMMENDATION_STATUS.DO_NOW) ||
+        (weatherAlerts && weatherAlerts.length > 0);
 
       const enrichedField = {
         ...newField,
@@ -388,7 +374,7 @@ const DashboardPage = ({ demoMode = false }) => {
       // Refresh fields list from API to ensure consistency
       await fetchFields();
       setIsModalOpen(false);
-      
+
       // Show success message
       alert(t('fieldCreated'));
     } catch (err) {

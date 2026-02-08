@@ -7,12 +7,14 @@ const FieldCard = ({ field, demoMode = false }) => {
   const { t } = useLanguage();
 
   const getMoistureColor = (moisture) => {
+    if (moisture === null || moisture === undefined) return 'bg-gray-400';
     if (moisture < 30) return 'bg-red-500';
     if (moisture < 60) return 'bg-yellow-500';
     return 'bg-green-500';
   };
 
   const getMoistureStatus = (moisture) => {
+    if (moisture === null || moisture === undefined) return 'No Data';
     if (moisture < 30) return 'Low';
     if (moisture < 60) return 'Moderate';
     return 'Good';
@@ -107,68 +109,75 @@ const FieldCard = ({ field, demoMode = false }) => {
             </span>
           )}
         </div>
-        
+
         <div className="space-y-4">
           <div>
             <p className="text-sm text-gray-600">{t('cropStage')}</p>
             <p className="font-medium">{field.cropStage || 'N/A'}</p>
           </div>
-          
+
           <div>
             <div className="flex justify-between items-center mb-1">
               <p className="text-sm text-gray-600">{t('soilMoisture')}</p>
-              <span className={`text-xs px-2 py-1 rounded ${getMoistureColor(field.soilMoisture || 0)} text-white`}>
-                {getMoistureStatus(field.soilMoisture || 0)}
+              <span className={`text-xs px-2 py-1 rounded ${getMoistureColor(field.soilMoisture)} text-white`}>
+                {getMoistureStatus(field.soilMoisture)}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className={`h-2 rounded-full ${getMoistureColor(field.soilMoisture || 0)}`}
+                className={`h-2 rounded-full ${getMoistureColor(field.soilMoisture)}`}
                 style={{ width: `${field.soilMoisture || 0}%` }}
               ></div>
             </div>
           </div>
 
           {/* Sensor Values Section */}
-          {field.sensorData && (
-            <div className="border-t pt-3">
-              <p className="text-sm font-semibold text-gray-700 mb-2">{t('sensorValues')}</p>
-              <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
-                <div className="bg-gray-50 rounded p-2">
-                  <p className="text-xs text-gray-600">{t('airTemperature')}</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {field.sensorData.airTemperature?.toFixed(1) || 'N/A'}°C
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded p-2">
-                  <p className="text-xs text-gray-600">{t('relativeHumidity')}</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {field.sensorData.relativeHumidity?.toFixed(0) || 'N/A'}%
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded p-2">
-                  <p className="text-xs text-gray-600">{t('soilTemperature')}</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {field.sensorData.soilTemperature?.toFixed(1) || 'N/A'}°C
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded p-2">
-                  <p className="text-xs text-gray-600">{t('lightIntensity')}</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {field.sensorData.lightIntensity?.toFixed(0) || 'N/A'} lux
-                  </p>
-                </div>
-                {field.sensorData.windSpeed !== undefined && field.sensorData.windSpeed !== null && (
-                  <div className="bg-gray-50 rounded p-2 col-span-2">
-                    <p className="text-xs text-gray-600">{t('windSpeed')}</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {field.sensorData.windSpeed?.toFixed(1) || 'N/A'} km/h
-                    </p>
-                  </div>
-                )}
+          <div className="border-t pt-3">
+            <p className="text-sm font-semibold text-gray-700 mb-2">{t('sensorValues')}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-xs text-gray-600">{t('airTemperature')}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {field.sensorData?.airTemperature != null ? `${field.sensorData.airTemperature.toFixed(1)}°C` : 'N/A'}
+                </p>
               </div>
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-xs text-gray-600">{t('relativeHumidity')}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {field.sensorData?.relativeHumidity != null ? `${field.sensorData.relativeHumidity.toFixed(0)}%` : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-xs text-gray-600">{t('soilTemperature')}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {field.sensorData?.soilTemperature != null ? `${field.sensorData.soilTemperature.toFixed(1)}°C` : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-xs text-gray-600">{t('lightIntensity')}</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {field.sensorData?.lightIntensity != null ? `${field.sensorData.lightIntensity.toFixed(0)} lux` : 'N/A'}
+                </p>
+              </div>
+              {/* Only show wind speed if it exists, or if we want to show N/A for it too? User said "incase of no readings show nil". 
+                  The original code only showed wind speed if it existed. 
+                  I'll keep the behavior of only showing if it exists OR if we are in a "No Data" state where everything is N/A? 
+                  Actually, if wind speed is optional, maybe we don't show N/A for it if it's missing but others are present.
+                  But if ALL are missing, we show N/A for the main ones.
+                  For wind speed, let's just leave it as is (only show if present) to save space, or show N/A if it's expected but missing.
+                  Given the layout (grid-cols-2), 4 items fit perfectly. Wind speed makes it 5.
+                  I'll leave wind speed conditionals as is, but handle nulls safely inside.
+              */}
+              {(field.sensorData?.windSpeed !== undefined && field.sensorData?.windSpeed !== null) && (
+                <div className="bg-gray-50 rounded p-2 col-span-2">
+                  <p className="text-xs text-gray-600">{t('windSpeed')}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {field.sensorData.windSpeed.toFixed(1)} km/h
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Recommendations Section */}
           {topRecommendations.length > 0 && (
