@@ -489,6 +489,9 @@ async def ai_chat(
     save_json("chat_history.json", chat_data)
     
     return ChatResponse(
+        id=str(uuid.uuid4()),
+        type="ai",
+        message=ai_response,
         response=ai_response,
         timestamp=timestamp
     )
