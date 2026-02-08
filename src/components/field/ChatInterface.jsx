@@ -8,6 +8,7 @@ const ChatInterface = ({ fieldId }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [language, setLanguage] = useState('en');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -90,7 +91,7 @@ const ChatInterface = ({ fieldId }) => {
       }
 
       // Call actual API to get reasoning layer response
-      const response = await chatService.sendMessage(fieldId, inputMessage);
+      const response = await chatService.sendMessage(fieldId, inputMessage, language);
 
       const aiResponse = {
         id: Date.now() + 1,
@@ -133,11 +134,29 @@ const ChatInterface = ({ fieldId }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-primary-600 text-white p-4 rounded-t-lg">
-        <h3 className="font-semibold">{t('aiReasoning')}</h3>
-        <p className="text-sm text-primary-100 mt-1">
-          Ask questions about AI recommendations and get explanations
-        </p>
+      <div className="bg-primary-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+        <div>
+          <h3 className="font-semibold">{t('aiReasoning')}</h3>
+          <p className="text-sm text-primary-100 mt-1">
+            Ask questions about AI recommendations and get explanations
+          </p>
+        </div>
+        <div className="flex bg-primary-700 rounded-lg p-1">
+          <button
+            onClick={() => setLanguage('en')}
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${language === 'en' ? 'bg-white text-primary-700 shadow-sm' : 'text-primary-100 hover:text-white'
+              }`}
+          >
+            English
+          </button>
+          <button
+            onClick={() => setLanguage('ta')}
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${language === 'ta' ? 'bg-white text-primary-700 shadow-sm' : 'text-primary-100 hover:text-white'
+              }`}
+          >
+            தமிழ்
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4" style={{ maxHeight: '500px' }}>
@@ -148,8 +167,8 @@ const ChatInterface = ({ fieldId }) => {
           >
             <div
               className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${msg.type === 'user'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-white text-gray-800 border border-gray-200'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-800 border border-gray-200'
                 }`}
             >
               <div className={`text-sm ${msg.type === 'user' ? 'text-white' : 'text-gray-800 markdown-body'}`}>

@@ -13,6 +13,7 @@ from routes.sensors import get_current_sensor_readings
 from routes.advisories import get_advisory_history
 from services.storage import load_json, save_json
 from services.reasoning_layer import reasoning_agri_assistant
+from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response
 from utils.helpers import get_timestamp
 from utils.field_validation import get_field_or_404
 
@@ -280,14 +281,15 @@ async def get_chat_history(
     Get chat history for a field
     
     - Returns list of previous chat messages
-    - Currently returns empty list (can be extended to store chat history)
     """
     # Verify field belongs to user (raises 404 if not owned)
     get_field_or_404(field_id, current_user["user_id"])
     
-    # TODO: Implement chat history storage and retrieval
-    # For now, return empty list
-    return []
+    # Load chat history
+    chat_data = load_json("chat_history.json")
+    field_history = chat_data.get(field_id, [])
+    
+    return [ChatResponse(**msg) for msg in field_history]
 
 
 @router.post("/{field_id}/chat", response_model=ChatResponse)
@@ -320,7 +322,7 @@ async def ai_chat(
     farmer_profile = {
         "name": farmer_user.get("name", ""),
         "location": farmer_user.get("location", ""),
-        "preferred_language": farmer_user.get("preferred_language", "en"),
+        "preferred_language": message.language or farmer_user.get("preferred_language", "en"),
         "farming_type": farmer_user.get("farming_type", "conventional")
     }
     
@@ -345,27 +347,35 @@ async def ai_chat(
             raise
     
     # Get weather data using user's location (optional - handle gracefully if missing)
+    # Get weather data using user's location
     weather_reference = {"note": "Weather data not available"}
     try:
-        # Weather endpoints now require lat/lon coordinates
-        # TODO: Update when location strings can be converted to coordinates
-        raise NotImplementedError("Weather data requires lat/lon coordinates, not location strings")
-        weather_reference = {
-            "current": {
-                "temperature": weather_response.temperature,
-                "humidity": weather_response.humidity,
-                "wind_speed": weather_response.wind_speed,
-                "conditions": weather_response.conditions
-            },
-            "alerts": [
-                {
-                    "type": alert.type,
-                    "title": alert.title,
-                    "message": alert.message
-                }
-                for alert in weather_alerts_response.alerts
-            ]
-        }
+        # Get coordinates for user location
+        coords = await get_coordinates(farmer_profile["location"])
+        
+        if coords:
+            # Fetch weather data
+            weather_data = await get_onecall_weather(coords["lat"], coords["lon"])
+            transformed_weather = transform_onecall_response(weather_data)
+            
+            # Format for reasoning layer
+            weather_reference = {
+                "current": transformed_weather["current"],
+                "forecast": transformed_weather["daily"][:3], # Next 3 days
+                "alerts": [
+                    {
+                        "type": alert.get("event"),
+                        "severity": alert.get("severity"),
+                        "description": alert.get("description")
+                    }
+                    for alert in transformed_weather.get("alerts", [])
+                ],
+                "location": coords["name"]
+            }
+        else:
+            print(f"Could not find coordinates for location: {farmer_profile['location']}")
+            weather_reference = {"note": f"Weather data not available for location: {farmer_profile['location']}"}
+            
     except Exception as e:
         # Weather data unavailable - continue with general advice
         print(f"Weather data unavailable: {e}")
@@ -447,9 +457,40 @@ async def ai_chat(
         farmer_question=message.message
     )
     
+    # Save chat history
+    chat_data = load_json("chat_history.json")
+    if field_id not in chat_data:
+        chat_data[field_id] = []
+    
+    timestamp = get_timestamp()
+    
+        # setMessages(response.data)
+        # So backend MUST return objects with { type, message, timestamp }.
+
+    
+
+    
+    # Append User Message
+    chat_data[field_id].append({
+        "id": str(uuid.uuid4()),
+        "type": "user",
+        "message": message.message,
+        "timestamp": timestamp
+    })
+    
+    # Append AI Message
+    chat_data[field_id].append({
+        "id": str(uuid.uuid4()),
+        "type": "ai",
+        "message": ai_response,
+        "timestamp": timestamp
+    })
+    
+    save_json("chat_history.json", chat_data)
+    
     return ChatResponse(
         response=ai_response,
-        timestamp=get_timestamp()
+        timestamp=timestamp
     )
 
 

@@ -153,11 +153,17 @@ class AIRecommendationResponse(BaseModel):
 
 class ChatMessage(BaseModel):
     message: str
+    language: Optional[str] = "en"
 
 
 class ChatResponse(BaseModel):
-    response: str
+    id: Optional[str] = None
+    type: Optional[str] = None # 'user' or 'ai'
+    message: str # helping frontend which expects 'message'
     timestamp: str
+    response: Optional[str] = None # Keeping for backward compatibility if needed, or remove? 
+    # Actually frontend uses `response.data.response || response.data.message`.
+    # Let's keep it simple.
 
 
 class TransparencyData(BaseModel):

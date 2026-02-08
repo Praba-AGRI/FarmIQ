@@ -22,6 +22,44 @@ OPENWEATHERMAP_TIMEOUT = 10.0  # seconds
 MAX_RETRIES = 3
 
 
+
+async def get_coordinates(location_name: str) -> Optional[Dict[str, float]]:
+    """
+    Get coordinates (lat, lon) for a location name using OpenWeather Geocoding API.
+    
+    Args:
+        location_name: Name of the location (e.g. "Chennai", "Coimbatore, Tamil Nadu")
+        
+    Returns:
+        Dictionary with 'lat' and 'lon', or None if not found
+    """
+    try:
+        # Use direct geocoding API
+        url = "http://api.openweathermap.org/geo/1.0/direct"
+        params = {
+            "q": location_name,
+            "limit": 1,
+            "appid": OPENWEATHERMAP_API_KEY
+        }
+        
+        async with httpx.AsyncClient(timeout=OPENWEATHERMAP_TIMEOUT) as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data and len(data) > 0:
+                return {
+                    "lat": data[0]["lat"],
+                    "lon": data[0]["lon"],
+                    "name": data[0].get("name", location_name)
+                }
+            return None
+            
+    except Exception as e:
+        print(f"Geocoding error for {location_name}: {e}")
+        return None
+
+
 def map_weather_condition(weather_id: int) -> str:
     """
     Map OpenWeatherMap weather condition ID to readable condition string.
