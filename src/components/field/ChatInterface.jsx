@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../../hooks/useLanguage';
 import { chatService } from '../../services/chatService';
 
@@ -87,24 +88,24 @@ const ChatInterface = ({ fieldId }) => {
       if (!fieldId || fieldId === 'NaN' || fieldId === 'undefined') {
         throw new Error('Invalid field ID. Please navigate from the dashboard.');
       }
-      
+
       // Call actual API to get reasoning layer response
       const response = await chatService.sendMessage(fieldId, inputMessage);
-      
+
       const aiResponse = {
         id: Date.now() + 1,
         type: 'ai',
         message: response.data.response || response.data.message || 'I apologize, but I could not generate a response. Please try again.',
         timestamp: response.data.timestamp || new Date().toISOString(),
       };
-      
+
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      
+
       // Extract error message
       let errorMessage = 'Sorry, I encountered an error. Please try again.';
-      
+
       if (error.response) {
         // Backend returned an error
         if (error.response.status === 404) {
@@ -117,7 +118,7 @@ const ChatInterface = ({ fieldId }) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       const errorResponse = {
         id: Date.now() + 1,
         type: 'ai',
@@ -146,13 +147,31 @@ const ChatInterface = ({ fieldId }) => {
             className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                msg.type === 'user'
+              className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${msg.type === 'user'
                   ? 'bg-primary-600 text-white'
                   : 'bg-white text-gray-800 border border-gray-200'
-              }`}
+                }`}
             >
-              <p className="text-sm">{msg.message}</p>
+              <div className={`text-sm ${msg.type === 'user' ? 'text-white' : 'text-gray-800 markdown-body'}`}>
+                {msg.type === 'ai' ? (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                      ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                      ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
+                      li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                      h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2" {...props} />,
+                      h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2" {...props} />,
+                      h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1" {...props} />,
+                      strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                    }}
+                  >
+                    {msg.message}
+                  </ReactMarkdown>
+                ) : (
+                  msg.message
+                )}
+              </div>
             </div>
           </div>
         ))}
