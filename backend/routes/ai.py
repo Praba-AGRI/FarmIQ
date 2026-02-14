@@ -14,6 +14,7 @@ from routes.advisories import get_advisory_history
 from services.storage import load_json, save_json
 from services.reasoning_layer import reasoning_agri_assistant
 from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response
+from services.irrigation_ml_service import predict_irrigation
 from utils.helpers import get_timestamp
 from utils.field_validation import get_field_or_404
 
@@ -76,17 +77,78 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         crop_stage = "Vegetative"  # Default, should come from AI agent
         gdd_value = 1250.0  # This should come from AI agent
         
-        # Generate recommendations based on mock logic
+        # Get weather data for irrigation prediction (ET0, rainfall, etc.)
+        # Default values if weather service fails
+        weather_data = {
+            "temp_avg": sensor_data["air_temp"],
+            "humidity_avg": sensor_data["air_humidity"],
+            "wind_speed": sensor_data["wind_speed"] if sensor_data["wind_speed"] else 1.4,
+            "solar_radiation": 20.0,
+            "rainfall_last_3d": 0.0,
+            "rainfall_forecast": 0.0,
+            "ET0": 5.0
+        }
+        
+        try:
+            # Try to get actual weather data if user location is available
+            users_data = load_json("users.json")
+            users = users_data.get("users", [])
+            farmer_user = next((u for u in users if u.get("user_id") == farmer_id_to_use), None)
+            
+            if farmer_user and farmer_user.get("location"):
+                coords = await get_coordinates(farmer_user["location"])
+                if coords:
+                    onecall_data = await get_onecall_weather(coords["lat"], coords["lon"])
+                    transformed = transform_onecall_response(onecall_data)
+                    
+                    # Update weather_data with real values
+                    weather_data["temp_avg"] = transformed["current"]["temperature"]
+                    weather_data["humidity_avg"] = transformed["current"]["humidity"]
+                    weather_data["wind_speed"] = transformed["current"]["wind_speed"]
+                    # Rainfall forecast (next 24h as rough estimate for forecast)
+                    weather_data["rainfall_forecast"] = sum(h["rain"] for h in transformed["hourly"][:24])
+                    # Note: rainfall_last_3d and solar_radiation would ideally come from a history/sensor service
+        except Exception as e:
+            print(f"Error fetching weather context for ML model: {e}")
+
+        # Generate recommendations
         recommendations = []
         
-        if sensor_data["soil_moisture"] < 50:
+        # Call Irrigation ML Model
+        ml_input = {
+            "crop": field.crop,
+            "stage": crop_stage,
+            **weather_data,
+            "soil_moisture": sensor_data["soil_moisture"]
+        }
+        
+        ml_recommendation = predict_irrigation(ml_input)
+        
+        if ml_recommendation:
+            # Add to recommendations if irrigation is required (> 0 mm)
+            status = RecommendationStatus.MONITOR
+            if ml_recommendation["irrigation_required_mm"] > 10:
+                status = RecommendationStatus.DO_NOW
+            elif ml_recommendation["irrigation_required_mm"] > 0:
+                status = RecommendationStatus.WAIT
+                
             recommendations.append({
-                "title": "Irrigation",
-                "description": f"Irrigate the field with 2 inches of water. Current soil moisture is {sensor_data['soil_moisture']}%, which is below optimal levels.",
-                "status": RecommendationStatus.DO_NOW,
-                "explanation": f"Soil moisture is at {sensor_data['soil_moisture']}%, which is below the optimal range of 60-70% for the current crop stage.",
-                "timing": "Within next 6 hours"
+                "title": ml_recommendation["title"],
+                "description": ml_recommendation["message"],
+                "status": status,
+                "explanation": f"Based on ML model prediction for {ml_recommendation['crop']} ({ml_recommendation['stage']}) with {ml_recommendation['confidence']}% confidence. Required: {ml_recommendation['irrigation_required_mm']}mm.",
+                "timing": "Within next 12 hours"
             })
+        else:
+            # Fallback to old rule-based logic if ML model fails or unsupported crop
+            if sensor_data["soil_moisture"] < 50:
+                recommendations.append({
+                    "title": "Irrigation",
+                    "description": f"Irrigate the field with 2 inches of water. Current soil moisture is {sensor_data['soil_moisture']}%, which is below optimal levels.",
+                    "status": RecommendationStatus.DO_NOW,
+                    "explanation": f"Soil moisture is at {sensor_data['soil_moisture']}%, which is below the optimal range of 60-70% for the current crop stage.",
+                    "timing": "Within next 6 hours"
+                })
         
         recommendations.append({
             "title": "Nutrients",
