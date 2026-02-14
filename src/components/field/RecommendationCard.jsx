@@ -142,20 +142,61 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
         </div>
 
         {loading && (
-          <div className="mb-4">
-            <div className="w-full bg-gray-100 rounded-full h-2 shadow-inner overflow-hidden">
+          <div className="mb-6 mt-4">
+            <div className="w-full bg-gray-100 rounded-full h-3 shadow-inner overflow-hidden border border-gray-200">
               <div
-                className="bg-primary-600 h-2 rounded-full transition-all duration-500 ease-out shadow-sm"
-                style={{ width: `${progress}%` }}
-              ></div>
+                className="bg-gradient-to-r from-primary-400 via-primary-600 to-primary-400 h-full rounded-full transition-all duration-700 ease-out shadow-lg relative animate-shimmer"
+                style={{ width: `${progress}%`, backgroundSize: '1000px 100%' }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              </div>
             </div>
-            <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase tracking-widest text-center animate-pulse">Running reasoning models & Agri-Knowledge Base check...</p>
+            <div className="flex justify-between items-center mt-3">
+              <span className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] animate-pulse">Running Reasoning Intelligence...</span>
+              <span className="text-[10px] text-primary-600 font-black tracking-widest">{progress}%</span>
+            </div>
           </div>
         )}
 
         {reasoning && !loading && (
-          <div className="bg-primary-50 p-4 rounded-xl text-sm border border-primary-100 font-medium prose prose-sm max-w-none prose-primary prose-p:leading-relaxed prose-headings:mb-2 prose-headings:mt-4 first:prose-headings:mt-0">
-            <ReactMarkdown>{reasoning}</ReactMarkdown>
+          <div className="mt-4 bg-gradient-to-br from-primary-50/50 to-white border border-primary-100/50 rounded-2xl p-6 shadow-sm backdrop-blur-sm">
+            <ReactMarkdown
+              components={{
+                h3: ({ node, ...props }) => {
+                  const title = props.children.toString();
+                  let icon = null;
+                  if (title.includes('Observation')) icon = <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>;
+                  if (title.includes('Action')) icon = <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+                  if (title.includes('Why')) icon = <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>;
+                  if (title.includes('Timing')) icon = <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+                  return (
+                    <div className="flex items-center gap-2 mb-4 mt-6 first:mt-0 pb-2 border-b border-gray-100">
+                      {icon}
+                      <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest" {...props} />
+                    </div>
+                  );
+                },
+                p: ({ node, ...props }) => {
+                  if (props.children.toString().includes('Namaste')) {
+                    return <p className="text-lg font-black text-primary-900 mb-6 flex items-center gap-2" {...props}>
+                      <span className="text-2xl">👋</span> {props.children}
+                    </p>;
+                  }
+                  return <p className="text-gray-700 leading-relaxed mb-4 font-medium" {...props} />;
+                },
+                ul: ({ node, ...props }) => <ul className="space-y-3 mb-6" {...props} />,
+                li: ({ node, ...props }) => (
+                  <li className="flex items-start gap-3 bg-white/50 p-3 rounded-lg border border-gray-50 shadow-sm transition-all hover:shadow-md hover:border-primary-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-400 mt-2 shrink-0 shadow-sm" />
+                    <span className="text-gray-700 text-sm font-medium leading-relaxed" {...props} />
+                  </li>
+                ),
+                strong: ({ node, ...props }) => <strong className="font-black text-primary-900 bg-primary-50 px-1.5 py-0.5 rounded-md border border-primary-100 mx-0.5 shadow-sm" {...props} />
+              }}
+            >
+              {reasoning}
+            </ReactMarkdown>
           </div>
         )}
       </div>
