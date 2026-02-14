@@ -136,8 +136,12 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                 "title": ml_recommendation["title"],
                 "description": ml_recommendation["message"],
                 "status": status,
-                "explanation": f"Based on ML model prediction for {ml_recommendation['crop']} ({ml_recommendation['stage']}) with {ml_recommendation['confidence']}% confidence. Required: {ml_recommendation['irrigation_required_mm']}mm.",
-                "timing": "Within next 12 hours"
+                "explanation": f"Based on ML model prediction for {ml_recommendation['crop']} ({ml_recommendation['stage']}).",
+                "timing": "Within next 12 hours",
+                "ml_data": {
+                    "amount_mm": ml_recommendation["irrigation_required_mm"],
+                    "confidence": ml_recommendation["confidence"]
+                }
             })
         else:
             # Fallback to old rule-based logic if ML model fails or unsupported crop
@@ -298,10 +302,13 @@ async def get_ai_recommendations(
         farmer_question=None
     )
     
-    # Convert recommendations to schema format
-    recommendation_items = [
-        RecommendationItem(**rec) for rec in ai_agent_output["recommendations"]
-    ]
+    # Convert recommendations to schema format and inject reasoning into Irrigation card
+    recommendation_items = []
+    for rec in ai_agent_output["recommendations"]:
+        item = RecommendationItem(**rec)
+        if item.title == "Irrigation Recommendation" or item.title == "Irrigation":
+            item.ai_reasoning = ai_reasoning_text
+        recommendation_items.append(item)
     
     # Save to advisory history
     advisories_data = load_json("advisories.json")

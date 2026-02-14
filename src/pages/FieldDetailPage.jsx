@@ -55,7 +55,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Mock demo field data based on field ID
       const demoFields = {
         '1': {
@@ -89,7 +89,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
           area_acres: 4.5,
         },
       };
-      
+
       const fieldData = demoFields[id] || demoFields['1'];
       setField(fieldData);
     } catch (err) {
@@ -104,20 +104,20 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Validate field ID
       if (!id) {
         setError('Field ID is required');
         return;
       }
-      
+
       // Fetch field from API
       const response = await fieldService.getField(id);
       const backendField = response.data;
-      
+
       // Get user location (location is stored in user profile, not field)
       const userLocation = user?.location || 'Tamil Nadu, India';
-      
+
       // Map backend format to frontend format
       const fieldData = {
         id: backendField.field_id,
@@ -129,7 +129,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
         sowing_date: backendField.sowing_date, // Include sowing date from backend
         area_acres: backendField.area_acres, // Include area from backend
       };
-      
+
       setField(fieldData);
     } catch (err) {
       if (err.response?.status === 404) {
@@ -147,15 +147,15 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setGeneratingReport(true);
       setError('');
-      
+
       const graphsData = await reportService.fetchGraphsData(field.id, '30d');
       const chartElements = document.querySelectorAll('.recharts-wrapper');
-      
+
       if (chartElements.length === 0) {
         alert('No charts available to export');
         return;
       }
-      
+
       await generateGraphsReport(field.name, Array.from(chartElements), t);
       alert(t('reportGenerated'));
     } catch (err) {
@@ -170,7 +170,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setGeneratingReport(true);
       setError('');
-      
+
       const recommendationsData = await reportService.fetchRecommendationsData(field.id);
       await generateRecommendationsReport(field.name, recommendationsData, t);
       alert(t('reportGenerated'));
@@ -186,7 +186,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setGeneratingReport(true);
       setError('');
-      
+
       const weatherData = await reportService.fetchWeatherData(field.location);
       await generateWeatherReport(field.location, weatherData, t);
       alert(t('reportGenerated'));
@@ -227,17 +227,17 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setUpdatingName(true);
       setError('');
-      
+
       const response = await fieldService.updateField(field.id, {
         name: editedName.trim()
       });
-      
+
       // Update local field state
       setField({
         ...field,
         name: response.data.name
       });
-      
+
       setIsEditingName(false);
       setEditedName('');
     } catch (err) {
@@ -295,16 +295,16 @@ const FieldDetailPage = ({ demoMode = false }) => {
     try {
       setUpdatingDetails(true);
       setError('');
-      
+
       const updateData = {
         crop: editedDetails.crop.trim(),
         sowing_date: editedDetails.sowing_date,
         area_acres: parseFloat(editedDetails.area_acres),
         sensor_node_id: editedDetails.sensor_node_id.trim(),
       };
-      
+
       const response = await fieldService.updateField(field.id, updateData);
-      
+
       // Update local field state
       setField({
         ...field,
@@ -313,7 +313,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
         area_acres: response.data.area_acres,
         sensor_node_id: response.data.sensor_node_id,
       });
-      
+
       setIsEditingDetails(false);
     } catch (err) {
       setError(err.response?.data?.detail || t('updateFieldDetailsError'));
@@ -327,7 +327,6 @@ const FieldDetailPage = ({ demoMode = false }) => {
     { id: 'sensors', label: t('realTimeData') },
     { id: 'graphs', label: t('graphsTrends') },
     { id: 'recommendations', label: t('recommendations') },
-    { id: 'chat', label: t('aiReasoning') },
     { id: 'weather', label: t('weatherAlerts') },
     { id: 'transparency', label: t('transparency') },
   ];
@@ -404,10 +403,10 @@ const FieldDetailPage = ({ demoMode = false }) => {
                       className="p-2 text-gray-500 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors"
                       title="Edit field name"
                     >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
                   )}
                 </>
               ) : (
@@ -581,11 +580,10 @@ const FieldDetailPage = ({ demoMode = false }) => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${
-                    activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-xs sm:text-sm ${activeTab === tab.id
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -663,7 +661,6 @@ const FieldDetailPage = ({ demoMode = false }) => {
             {activeTab === 'sensors' && field.id && <SensorDataTab fieldId={String(field.id)} sensorNodeId={field.sensor_node_id} />}
             {activeTab === 'graphs' && field.id && <GraphsTab fieldId={String(field.id)} />}
             {activeTab === 'recommendations' && field.id && <RecommendationsTab fieldId={String(field.id)} />}
-            {activeTab === 'chat' && field.id && <AIChatTab fieldId={String(field.id)} />}
             {activeTab === 'weather' && field.id && <WeatherTab fieldId={String(field.id)} location={field.location} demoMode={demoMode} />}
             {activeTab === 'transparency' && field.id && <TransparencyTab fieldId={String(field.id)} />}
           </div>

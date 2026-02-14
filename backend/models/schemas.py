@@ -142,6 +142,8 @@ class RecommendationItem(BaseModel):
     status: RecommendationStatus
     explanation: Optional[str] = None
     timing: Optional[str] = None
+    ml_data: Optional[dict] = None
+    ai_reasoning: Optional[str] = None
 
 
 class AIRecommendationResponse(BaseModel):
