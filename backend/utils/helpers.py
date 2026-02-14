@@ -50,9 +50,6 @@ def filter_by_date_range(data: list[dict], start: datetime, end: datetime) -> li
             timestamp_str = item.get('timestamp', '')
             if timestamp_str:
                 item_time = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                # Convert to UTC naive for comparison
-                if item_time.tzinfo:
-                    item_time = item_time.replace(tzinfo=None)
                 
                 if start <= item_time <= end:
                     filtered.append(item)
