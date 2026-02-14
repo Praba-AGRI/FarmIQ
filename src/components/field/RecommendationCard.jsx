@@ -103,17 +103,26 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
 
         <p className="text-base text-gray-700 font-bold mb-3">{recommendation.description}</p>
 
+
         {recommendation.ml_data && (
           <div className="mb-3 grid grid-cols-2 gap-3">
             <div className="bg-white border-2 border-blue-50 rounded-xl p-3 shadow-sm">
-              <span className="text-[9px] text-blue-400 block mb-1 uppercase tracking-widest font-black">{t('predictedAmount')}</span>
+              <span className="text-[9px] text-blue-400 block mb-1 uppercase tracking-widest font-black">
+                {recommendation.ml_data.amount_mm ? 'Predicted Amount' :
+                  recommendation.ml_data.risk_level !== undefined ? 'Risk Level' : 'Prediction'}
+              </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-blue-900">{recommendation.ml_data.amount_mm}</span>
-                <span className="text-[10px] font-bold text-blue-600 uppercase">mm</span>
+                <span className="text-2xl font-black text-blue-900">
+                  {recommendation.ml_data.amount_mm || recommendation.ml_data.risk_level || 'N/A'}
+                </span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase">
+                  {recommendation.ml_data.amount_mm ? 'mm' :
+                    recommendation.ml_data.risk_level !== undefined ? '%' : ''}
+                </span>
               </div>
             </div>
             <div className="bg-white border-2 border-green-50 rounded-xl p-3 shadow-sm">
-              <span className="text-[9px] text-green-400 block mb-1 uppercase tracking-widest font-black">{t('modelConfidence')}</span>
+              <span className="text-[9px] text-green-400 block mb-1 uppercase tracking-widest font-black">Confidence</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-black text-green-900">{recommendation.ml_data.confidence}</span>
                 <span className="text-[10px] font-bold text-green-600">%</span>

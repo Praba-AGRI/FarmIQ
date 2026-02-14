@@ -163,14 +163,60 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "timing": "After 2 days"
         })
         
-        if sensor_data["air_humidity"] > 60:
-            recommendations.append({
-                "title": "Pest/Disease Risk",
-                "description": "Monitor for pest activity. High humidity conditions favor pest development.",
-                "status": RecommendationStatus.MONITOR,
-                "explanation": f"Relative humidity is above 60% ({sensor_data['air_humidity']}%) and temperature is optimal for pest activity. Regular monitoring recommended.",
-                "timing": "Daily monitoring"
-            })
+        # Pest Management Recommendation with ML-style predictions
+        pest_risk_score = 0
+        pest_factors = []
+        
+        # Environmental risk factors for pests
+        if sensor_data["air_humidity"] > 70:
+            pest_risk_score += 40
+            pest_factors.append(f"High humidity ({sensor_data['air_humidity']}%)")
+        elif sensor_data["air_humidity"] > 60:
+            pest_risk_score += 25
+            pest_factors.append(f"Moderate humidity ({sensor_data['air_humidity']}%)")
+        
+        temp_optimal_for_pests = 25 <= sensor_data["air_temp"] <= 32
+        if temp_optimal_for_pests:
+            pest_risk_score += 30
+            pest_factors.append(f"Optimal temperature for pests ({sensor_data['air_temp']}°C)")
+        
+        # Add rainfall influence if available
+        if weather_data.get("rainfall_last_3d", 0) > 10:
+            pest_risk_score += 20
+            pest_factors.append("Recent rainfall increases risk")
+        
+        # Normalize score to 0-100 and calculate confidence
+        pest_risk_score = min(pest_risk_score, 100)
+        pest_confidence = min(75 + len(pest_factors) * 5, 95)  # Higher confidence with more factors
+        
+        # Determine pest status and description
+        if pest_risk_score >= 60:
+            pest_status = RecommendationStatus.DO_NOW
+            pest_description = "High pest risk detected. Immediate monitoring and preventive action recommended."
+            pest_action = "Apply recommended pest control measures"
+        elif pest_risk_score >= 30:
+            pest_status = RecommendationStatus.MONITOR
+            pest_description = "Moderate pest risk. Increase monitoring frequency."
+            pest_action = "Monitor daily for pest activity"
+        else:
+            pest_status = RecommendationStatus.WAIT
+            pest_description = "Low pest risk. Continue regular monitoring."
+            pest_action = "Continue routine monitoring"
+        
+        # Build explanation
+        pest_explanation = f"Pest risk assessment based on: {', '.join(pest_factors)}. Environmental conditions are {'favorable' if pest_risk_score >= 60 else 'moderately favorable' if pest_risk_score >= 30 else 'not favorable'} for pest activity."
+        
+        recommendations.append({
+            "title": "Pest Management",
+            "description": pest_description,
+            "status": pest_status,
+            "explanation": pest_explanation,
+            "timing": "Immediate" if pest_risk_score >= 60 else "Daily monitoring" if pest_risk_score >= 30 else "Weekly monitoring",
+            "ml_data": {
+                "risk_level": round(pest_risk_score, 1),
+                "confidence": round(pest_confidence, 1)
+            }
+        })
         
         return {
             "crop_stage": crop_stage,
