@@ -4,7 +4,8 @@ import uuid
 
 from models.schemas import (
     AIRecommendationRequest, AIRecommendationResponse, RecommendationItem,
-    ChatMessage, ChatResponse, TransparencyData, RecommendationStatus
+    ChatMessage, ChatResponse, TransparencyData, RecommendationStatus,
+    CardReasoningRequest, CardReasoningResponse
 )
 from routes.auth import get_current_user
 from routes.sensors import get_current_sensor_readings
@@ -291,24 +292,10 @@ async def get_ai_recommendations(
         "gdd_value": ai_agent_output["gdd_value"]
     }
     
-    # Call reasoning layer to generate human-readable advisory
-    ai_reasoning_text = await reasoning_agri_assistant(
-        farmer_profile=farmer_profile,
-        field_context=field_context,
-        ai_agent_output=formatted_ai_output,
-        approved_knowledge=approved_knowledge,
-        weather_reference=weather_reference,
-        advisory_history=advisory_history,
-        farmer_question=None
-    )
-    
-    # Convert recommendations to schema format and inject reasoning into Irrigation card
-    recommendation_items = []
-    for rec in ai_agent_output["recommendations"]:
-        item = RecommendationItem(**rec)
-        if item.title == "Irrigation Recommendation" or item.title == "Irrigation":
-            item.ai_reasoning = ai_reasoning_text
-        recommendation_items.append(item)
+    # Convert recommendations to schema format
+    recommendation_items = [
+        RecommendationItem(**rec) for rec in ai_agent_output["recommendations"]
+    ]
     
     # Save to advisory history
     advisories_data = load_json("advisories.json")
@@ -337,8 +324,69 @@ async def get_ai_recommendations(
         crop_stage=ai_agent_output["crop_stage"],
         gdd_value=ai_agent_output["gdd_value"],
         recommendations=recommendation_items,
-        ai_reasoning_text=ai_reasoning_text
+        ai_reasoning_text=None
     )
+
+
+@router.post("/{field_id}/recommendations/reasoning", response_model=CardReasoningResponse)
+async def get_recommendation_reasoning(
+    field_id: str,
+    request: CardReasoningRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get human-readable reasoning for a specific recommendation card
+    """
+    # Verify field ownership
+    field = get_field_or_404(field_id, current_user["user_id"])
+    
+    # Get all context (Farmer, Field, Sensors, Advisory History)
+    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    
+    users_data = load_json("users.json")
+    farmer_user = next((u for u in users_data.get("users", []) if u.get("user_id") == current_user["user_id"]), None)
+    if not farmer_user:
+        raise HTTPException(status_code=404, detail="Farmer profile not found")
+        
+    farmer_profile = {
+        "name": farmer_user.get("name", ""),
+        "location": farmer_user.get("location", ""),
+        "preferred_language": farmer_user.get("preferred_language", "en"),
+        "farming_type": farmer_user.get("farming_type", "conventional")
+    }
+    
+    field_context = {
+        "crop": field.crop,
+        "stage": ai_agent_output.get("crop_stage", "Unknown"),
+        "area_acres": field.area_acres
+    }
+    
+    # Format current agent output
+    formatted_ai_output = {
+        "specific_request": request.title,
+        "recommendations": ai_agent_output["recommendations"],
+        "sensor_values": ai_agent_output["sensor_values"],
+        "crop_stage": ai_agent_output["crop_stage"]
+    }
+    
+    # Load knowledge base
+    knowledge_data = load_json("knowledge_base.json")
+    approved_knowledge = knowledge_data.get("approved_knowledge", {})
+    
+    # Call reasoning layer with a specific prompt for this card
+    prompt = f"Please explain the reasoning behind the recommendation: '{request.title}'. Focus only on this specific recommendation."
+    
+    reasoning_text = await reasoning_agri_assistant(
+        farmer_profile=farmer_profile,
+        field_context=field_context,
+        ai_agent_output=formatted_ai_output,
+        approved_knowledge=approved_knowledge,
+        weather_reference={}, # Optional
+        advisory_history=[], # Optional
+        farmer_question=prompt
+    )
+    
+    return CardReasoningResponse(reasoning=reasoning_text)
 
 
 @router.get("/{field_id}/chat/history", response_model=List[ChatResponse])

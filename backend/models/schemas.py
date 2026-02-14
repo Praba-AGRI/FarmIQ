@@ -150,7 +150,7 @@ class AIRecommendationResponse(BaseModel):
     crop_stage: str
     gdd_value: float
     recommendations: List[RecommendationItem]
-    ai_reasoning_text: str
+    ai_reasoning_text: Optional[str] = None
 
 
 class ChatMessage(BaseModel):
@@ -166,6 +166,15 @@ class ChatResponse(BaseModel):
     response: Optional[str] = None # Keeping for backward compatibility if needed, or remove? 
     # Actually frontend uses `response.data.response || response.data.message`.
     # Let's keep it simple.
+
+
+class CardReasoningRequest(BaseModel):
+    title: str
+    field_context: Optional[dict] = None
+
+
+class CardReasoningResponse(BaseModel):
+    reasoning: str
 
 
 class TransparencyData(BaseModel):

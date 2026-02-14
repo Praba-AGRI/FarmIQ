@@ -9,6 +9,10 @@ export const recommendationService = {
     // Placeholder API call
     return api.get(`/fields/${fieldId}/transparency`);
   },
+
+  getCardReasoning: async (fieldId, title) => {
+    return api.post(`/fields/${fieldId}/recommendations/reasoning`, { title });
+  },
 };
 
 

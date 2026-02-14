@@ -61,7 +61,7 @@ const RecommendationsTab = ({ fieldId }) => {
 
       <div className="grid gap-6">
         {recommendations.map((recommendation, index) => (
-          <RecommendationCard key={recommendation.id || index} recommendation={recommendation} />
+          <RecommendationCard key={recommendation.id || index} recommendation={recommendation} fieldId={fieldId} />
         ))}
       </div>
     </div>
