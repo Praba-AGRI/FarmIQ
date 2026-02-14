@@ -335,7 +335,8 @@ async def get_recommendation_reasoning(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get human-readable reasoning for a specific recommendation card
+    Get AI reasoning for a specific recommendation card.
+    Supports Tamil and English via language parameter.
     """
     # Verify field ownership
     field = get_field_or_404(field_id, current_user["user_id"])
@@ -348,10 +349,13 @@ async def get_recommendation_reasoning(
     if not farmer_user:
         raise HTTPException(status_code=404, detail="Farmer profile not found")
         
+    # Use language from request, or default to user preference
+    language = request.language if request.language else farmer_user.get("preferred_language", "en")
+    
     farmer_profile = {
         "name": farmer_user.get("name", ""),
         "location": farmer_user.get("location", ""),
-        "preferred_language": farmer_user.get("preferred_language", "en"),
+        "preferred_language": language,  # Use requested language
         "farming_type": farmer_user.get("farming_type", "conventional")
     }
     

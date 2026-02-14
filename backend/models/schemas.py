@@ -170,6 +170,7 @@ class ChatResponse(BaseModel):
 
 class CardReasoningRequest(BaseModel):
     title: str
+    language: Optional[str] = "en"  # "en" or "ta"
     field_context: Optional[dict] = None
 
 

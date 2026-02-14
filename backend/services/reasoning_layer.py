@@ -60,7 +60,6 @@ Your goal is to explain things simply and clearly while maintaining a profession
 GUIDELINES FOR YOUR ANSWERS:
 1.  **No Greetings**: Do NOT include any greetings (Namaste, Hello, etc.) or conversational fluff. Start directly with the data.
 2.  **Clear Structural Headers**: Use ONLY these standard markdown headers for consistency:
-    - `### Observation`: Sensors/AI findings.
     - `### Action`: Direct recommendation steps.
     - `### Why (Reasoning)`: Science/logical basis.
     - `### Timing`: Explicit when-to-do-it instructions.

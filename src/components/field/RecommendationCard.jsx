@@ -5,11 +5,12 @@ import { recommendationService } from '../../services/recommendationService';
 import ReactMarkdown from 'react-markdown';
 
 const RecommendationCard = ({ recommendation, fieldId }) => {
-  const { t } = useLanguage();
+  const { t, language: globalLanguage } = useLanguage();
   const [reasoning, setReasoning] = useState(recommendation.ai_reasoning || '');
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [reasoningLanguage, setReasoningLanguage] = useState(globalLanguage);
 
   const isIrrigation = recommendation.title === 'Irrigation' || recommendation.title === 'Irrigation Recommendation';
 
@@ -19,7 +20,7 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
     }
   }, [fieldId]);
 
-  const fetchReasoning = async () => {
+  const fetchReasoning = async (lang = reasoningLanguage) => {
     try {
       setLoading(true);
       setProgress(10);
@@ -29,12 +30,13 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
         setProgress(prev => (prev < 90 ? prev + 10 : prev));
       }, 500);
 
-      const response = await recommendationService.getCardReasoning(fieldId, recommendation.title);
+      const response = await recommendationService.getCardReasoning(fieldId, recommendation.title, lang);
       clearInterval(interval);
       setProgress(100);
 
       setTimeout(() => {
         setReasoning(response.data.reasoning);
+        setReasoningLanguage(lang);
         setLoading(false);
         setProgress(0);
       }, 500);
@@ -149,6 +151,22 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
+
+            <button
+              onClick={() => {
+                const newLang = reasoningLanguage === 'en' ? 'ta' : 'en';
+                fetchReasoning(newLang);
+              }}
+              disabled={loading}
+              title={reasoningLanguage === 'en' ? 'Translate to Tamil' : 'Translate to English'}
+              className="flex items-center gap-1 px-2 py-1 text-[10px] font-black text-primary-700 bg-primary-50 hover:bg-primary-100 rounded-md transition-colors border border-primary-200 uppercase tracking-widest"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+              </svg>
+              {reasoningLanguage === 'en' ? 'EN' : 'த'}
+            </button>
+
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="flex items-center gap-1.5 text-[10px] font-black text-gray-500 hover:text-gray-800 transition-colors uppercase tracking-[0.1em] px-2 py-1 rounded-md bg-gray-50 hover:bg-gray-100 border border-gray-200"

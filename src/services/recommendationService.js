@@ -10,13 +10,10 @@ export const recommendationService = {
     return api.get(`/fields/${fieldId}/transparency`);
   },
 
-  getCardReasoning: async (fieldId, title) => {
-    return api.post(`/fields/${fieldId}/recommendations/reasoning`, { title });
-  },
+  getCardReasoning: async (fieldId, title, language = 'en') => {
+    return api.post(`/fields/${fieldId}/recommendations/reasoning`, {
+      title,
+      language
+    });
+  }
 };
-
-
-
-
-
-
