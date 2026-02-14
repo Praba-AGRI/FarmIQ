@@ -18,27 +18,10 @@ const TransparencyTab = ({ fieldId }) => {
     try {
       setLoading(true);
       setError('');
-      // Mock data for demonstration
-      setTransparencyData({
-        sensorValues: {
-          airTemperature: 28.5,
-          relativeHumidity: 65,
-          soilMoisture: 45,
-          soilTemperature: 26.2,
-          lightIntensity: 850,
-        },
-        predictedStage: 'Vegetative',
-        gddValue: 1250,
-        irrigationLogic: 'Soil moisture (45%) is below optimal threshold (60-70%) for vegetative stage. Temperature and humidity are within acceptable ranges.',
-        pestRiskFactors: [
-          'High relative humidity (65%)',
-          'Optimal temperature range (25-30°C)',
-          'Crop stage: Vegetative (susceptible)',
-        ],
-      });
-      // const response = await recommendationService.getTransparencyData(fieldId);
-      // setTransparencyData(response.data);
+      const response = await recommendationService.getTransparencyData(fieldId);
+      setTransparencyData(response.data);
     } catch (err) {
+      console.error('Error fetching transparency data:', err);
       setError('Failed to load transparency data');
     } finally {
       setLoading(false);

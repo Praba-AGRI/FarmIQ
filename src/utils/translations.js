@@ -16,7 +16,7 @@ export const translations = {
     loading: "Loading...",
     error: "Error",
     success: "Success",
-    
+
     // Landing Page
     heroTitle: "Grow Smarter. Reduce Crop Loss. Increase Yield.",
     heroSubtitle: "Real-time field sensors + AI recommendations based on ICAR & TNAU — tailored for your farm",
@@ -45,6 +45,7 @@ export const translations = {
     featureSensors: "Real-time Sensor Monitoring",
     featureSensorsDesc: "See your field's live temperature, moisture & humidity — not estimates",
     featureAI: "AI Reasoning Assistant",
+    aiReasoningAssistant: "AI Reasoning Assistant",
     featureAIDesc: "Ask why a recommendation was given — full transparency",
     featureAdvisory: "ICAR/TNAU Based Advice",
     featureAdvisoryDesc: "Recommendations aligned with Indian agricultural research, not generic AI",
@@ -72,7 +73,7 @@ export const translations = {
     messageSentNote: "We'll get back to you soon. (Note: Form submission will be connected to backend soon.)",
     privacyNote: "Privacy & Data Safety",
     privacyNoteDescription: "Your personal information and messages are kept private and secure. We only use your contact details to respond to your inquiries and never share them with third parties.",
-    
+
     // Auth
     emailOrMobile: "Email or Mobile Number",
     password: "Password",
@@ -83,7 +84,7 @@ export const translations = {
     organic: "Organic",
     conventional: "Conventional",
     preferredLanguage: "Preferred Language",
-    
+
     // Dashboard
     myFields: "My Fields",
     addNewField: "Add New Field",
@@ -119,7 +120,7 @@ export const translations = {
     fieldNameEmpty: "Field name cannot be empty",
     updateFieldNameError: "Failed to update field name",
     updateFieldDetailsError: "Failed to update field details",
-    
+
     // Field Detail
     realTimeData: "Real-Time Sensor Data",
     graphsTrends: "Graphs & Trends",
@@ -153,7 +154,7 @@ export const translations = {
     gddValue: "GDD Value",
     irrigationLogic: "Irrigation Logic Summary",
     pestRiskFactors: "Pest Risk Factors",
-    
+
     // Sensor Data Tab
     primarySensors: "Primary Sensors",
     secondarySensors: "Secondary Sensors",
@@ -179,17 +180,17 @@ export const translations = {
     hourAgo: "hour ago",
     hoursAgo: "hours ago",
     never: "Never",
-    
+
     // Advisory History
     advisoryHistory: "Advisory History",
     filterByField: "Filter by Field",
     filterByDate: "Filter by Date",
     compare: "Compare",
-    
+
     // Profile
     personalDetails: "Personal Details",
     myFields: "My Fields",
-    
+
     // Settings
     notifications: "Notifications",
     alertPreferences: "Alert Preferences",
@@ -197,7 +198,7 @@ export const translations = {
     theme: "Theme",
     light: "Light",
     dark: "Dark",
-    
+
     // Reports
     downloadFullReport: "Download Full Report",
     downloadGraphsReport: "Download Graphs Report",
@@ -207,7 +208,7 @@ export const translations = {
     generatingReport: "Generating Report...",
     reportGenerated: "Report generated successfully",
     reportError: "Failed to generate report",
-    
+
     // Profile Picture
     profilePicture: "Profile Picture",
     uploadPicture: "Upload Picture",
@@ -236,7 +237,7 @@ export const translations = {
     loading: "ஏற்றுகிறது...",
     error: "பிழை",
     success: "வெற்றி",
-    
+
     // Landing Page
     heroTitle: "புத்திசாலித்தனமாக வளர்க்கவும். பயிர் இழப்பை குறைக்கவும். விளைச்சலை அதிகரிக்கவும்.",
     heroSubtitle: "நேரடி வயல் சென்சார்கள் + ICAR & TNAU அடிப்படையிலான AI பரிந்துரைகள் — உங்கள் விவசாயத்திற்கு தனிப்பயனாக்கப்பட்டது",
@@ -292,7 +293,7 @@ export const translations = {
     messageSentNote: "நாங்கள் விரைவில் உங்களிடம் திரும்புவோம். (குறிப்பு: படிவ சமர்ப்பிப்பு விரைவில் பின்எண்டுடன் இணைக்கப்படும்.)",
     privacyNote: "தனியுரிமை மற்றும் தரவு பாதுகாப்பு",
     privacyNoteDescription: "உங்கள் தனிப்பட்ட தகவல்கள் மற்றும் செய்திகள் தனியாகவும் பாதுகாப்பாகவும் வைக்கப்படுகின்றன. உங்கள் விசாரணைகளுக்கு பதிலளிக்க மட்டுமே உங்கள் தொடர்பு விவரங்களைப் பயன்படுத்துகிறோம் மற்றும் அவற்றை மூன்றாம் நபர்களுடன் பகிர்ந்து கொள்வதில்லை.",
-    
+
     // Auth
     emailOrMobile: "மின்னஞ்சல் அல்லது மொபைல் எண்",
     password: "கடவுச்சொல்",
@@ -303,7 +304,7 @@ export const translations = {
     organic: "கரிம",
     conventional: "பாரம்பரிய",
     preferredLanguage: "விருப்பமான மொழி",
-    
+
     // Dashboard
     myFields: "எனது வயல்கள்",
     addNewField: "புதிய வயலைச் சேர்",
@@ -339,7 +340,7 @@ export const translations = {
     fieldNameEmpty: "வயல் பெயர் காலியாக இருக்கக்கூடாது",
     updateFieldNameError: "வயல் பெயரை புதுப்பிக்க முடியவில்லை",
     updateFieldDetailsError: "வயல் விவரங்களை புதுப்பிக்க முடியவில்லை",
-    
+
     // Field Detail
     realTimeData: "நேரடி சென்சார் தரவு",
     graphsTrends: "வரைபடங்கள் மற்றும் போக்குகள்",
@@ -373,7 +374,8 @@ export const translations = {
     gddValue: "GDD மதிப்பு",
     irrigationLogic: "பாசன தர்க்க சுருக்கம்",
     pestRiskFactors: "பூச்சி அபாய காரணிகள்",
-    
+    aiReasoningAssistant: "AI பகுத்தறிவு உதவியாளர்",
+
     // Sensor Data Tab
     primarySensors: "முதன்மை சென்சார்கள்",
     secondarySensors: "இரண்டாம் நிலை சென்சார்கள்",
@@ -399,17 +401,17 @@ export const translations = {
     hourAgo: "மணி நேரம் முன்",
     hoursAgo: "மணி நேரங்கள் முன்",
     never: "எப்போதும் இல்லை",
-    
+
     // Advisory History
     advisoryHistory: "ஆலோசனை வரலாறு",
     filterByField: "வயலால் வடிகட்டு",
     filterByDate: "தேதியால் வடிகட்டு",
     compare: "ஒப்பிடு",
-    
+
     // Profile
     personalDetails: "தனிப்பட்ட விவரங்கள்",
     myFields: "எனது வயல்கள்",
-    
+
     // Settings
     notifications: "அறிவிப்புகள்",
     alertPreferences: "எச்சரிக்கை விருப்பங்கள்",
@@ -417,7 +419,7 @@ export const translations = {
     theme: "தீம்",
     light: "வெளிச்சம்",
     dark: "இருள்",
-    
+
     // Reports
     downloadFullReport: "முழு அறிக்கையைப் பதிவிறக்கு",
     downloadGraphsReport: "வரைபட அறிக்கையைப் பதிவிறக்கு",
@@ -427,7 +429,7 @@ export const translations = {
     generatingReport: "அறிக்கை உருவாக்கப்படுகிறது...",
     reportGenerated: "அறிக்கை வெற்றிகரமாக உருவாக்கப்பட்டது",
     reportError: "அறிக்கையை உருவாக்க முடியவில்லை",
-    
+
     // Profile Picture
     profilePicture: "சுயவிவர படம்",
     uploadPicture: "படத்தை பதிவேற்று",
