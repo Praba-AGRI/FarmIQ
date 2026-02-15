@@ -1,21 +1,32 @@
-import joblib
-import numpy as np
 import os
 from pathlib import Path
+
+# Try to import ML libraries, but don't crash if they are missing
+# This allows the backend to run even if the environment is not fully set up
+try:
+    import joblib
+    import numpy as np
+    ML_AVAILABLE = True
+except ImportError:
+    print("Warning: ML libraries (joblib, numpy) not found. ML features will be disabled.")
+    ML_AVAILABLE = False
 
 # Load models once at startup
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "ml models" / "irrigation"
 
 models = {}
-try:
-    models["rice"] = joblib.load(MODEL_PATH / "rice_irrigation_model.pkl")
-    models["wheat"] = joblib.load(MODEL_PATH / "wheat_irrigation_model.pkl")
-    models["groundnut"] = joblib.load(MODEL_PATH / "groundnut_irrigation_model.pkl")
-    models["sugarcane"] = joblib.load(MODEL_PATH / "sugarcane_irrigation_model.pkl")
-    print("Irrigation models loaded successfully.")
-except Exception as e:
-    print(f"Error loading irrigation models: {e}")
+
+if ML_AVAILABLE:
+    try:
+        models["rice"] = joblib.load(MODEL_PATH / "rice_irrigation_model.pkl")
+        models["wheat"] = joblib.load(MODEL_PATH / "wheat_irrigation_model.pkl")
+        models["groundnut"] = joblib.load(MODEL_PATH / "groundnut_irrigation_model.pkl")
+        models["sugarcane"] = joblib.load(MODEL_PATH / "sugarcane_irrigation_model.pkl")
+        print("Irrigation models loaded successfully.")
+    except Exception as e:
+        print(f"Error loading irrigation models: {e}")
+
 
 # Crop-specific Kc values
 KC_VALUES = {
@@ -65,8 +76,8 @@ def predict_irrigation(data: dict):
     crop = data["crop"].lower()
     stage = data["stage"].lower()
 
-    if crop not in models:
-        # Fallback logic if model for specific crop is not loaded
+    if not ML_AVAILABLE or crop not in models:
+        # Fallback logic if model for specific crop is not loaded or ML libs missing
         return None
 
     model = models[crop]

@@ -87,6 +87,27 @@ const TransparencyTab = ({ fieldId }) => {
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('irrigationLogic')}</h4>
         <p className="text-gray-700">{irrigationLogic}</p>
+
+        {/* Detailed Irrigation Metrics */}
+        {(transparencyData.et0 !== undefined || transparencyData.etc !== undefined) && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <h5 className="text-sm font-semibold text-gray-700 mb-2">Calculated Metrics (Penman-Monteith)</h5>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-2 rounded">
+                <span className="text-xs text-gray-500 block">ET0</span>
+                <span className="font-mono text-blue-700">{transparencyData.et0 ?? 'N/A'} mm</span>
+              </div>
+              <div className="bg-green-50 p-2 rounded">
+                <span className="text-xs text-gray-500 block">Kc (Crop Coeff.)</span>
+                <span className="font-mono text-green-700">{transparencyData.kc ?? 'N/A'}</span>
+              </div>
+              <div className="bg-indigo-50 p-2 rounded">
+                <span className="text-xs text-gray-500 block">ETc (Crop ET)</span>
+                <span className="font-mono text-indigo-700">{transparencyData.etc ?? 'N/A'} mm</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card">

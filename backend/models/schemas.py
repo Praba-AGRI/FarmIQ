@@ -184,6 +184,9 @@ class TransparencyData(BaseModel):
     gdd_value: float
     irrigation_logic: str
     pest_risk_factors: List[str]
+    et0: Optional[float] = None
+    etc: Optional[float] = None
+    kc: Optional[float] = None
 
 
 # Weather Schemas

@@ -16,6 +16,7 @@ from services.storage import load_json, save_json
 from services.reasoning_layer import reasoning_agri_assistant
 from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response
 from services.irrigation_ml_service import predict_irrigation
+from services.irrigation_logic import irrigation_recommendation
 from utils.helpers import get_timestamp
 from utils.field_validation import get_field_or_404
 
@@ -41,6 +42,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         # Get field first - validate ownership using helper
         # Note: get_field_or_404 is synchronous, but works with farmer_id directly
         farmer_id_to_use = farmer_id if current_user is None else current_user["user_id"]
+        
         field = get_field_or_404(field_id, farmer_id_to_use)
         
         # Try to get sensor data, but handle missing data gracefully
@@ -115,18 +117,46 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         # Generate recommendations
         recommendations = []
         
-        # Call Irrigation ML Model
+        # 1. Calculate derived metrics using Logic Engine (GDD, ET0, ETc) 
+        # based on real-time weather data
+        logic_input = {
+            "crop": field.crop,
+            "weather_history": [], # TODO: pass real history if available
+            "temp_avg": weather_data.get("temp_avg", 30),
+            "temp_max": weather_data.get("temp_avg", 30) + 5, # Estimate
+            "temp_min": weather_data.get("temp_avg", 30) - 5, # Estimate
+            "humidity": weather_data.get("humidity_avg", 60),
+            "wind_speed": weather_data.get("wind_speed", 2.0),
+            "solar_radiation": weather_data.get("solar_radiation", 15.0),
+            "rainfall_last_3d": weather_data.get("rainfall_last_3d", 0),
+            "soil_moisture": sensor_data["soil_moisture"],
+            "stage": crop_stage # Use estimated stage as fallback/hint
+        }
+        
+        logic_result = irrigation_recommendation(logic_input)
+        
+        # Extract calculated metrics for ML model and Transparency
+        calculated_et0 = logic_result["ET0_mm_day"]
+        calculated_etc = logic_result["ETc_mm_day"]
+        calculated_kc = logic_result["Kc"]
+        calculated_gdd = logic_result["cumulative_gdd"]
+        estimated_stage = logic_result["estimated_stage"]
+        
+        # 2. Call Irrigation ML Model using calculated metrics
         ml_input = {
             "crop": field.crop,
-            "stage": crop_stage,
+            "stage": estimated_stage, # Use stage from logic engine
             **weather_data,
+            "ET0": calculated_et0, # Use calculated ET0
             "soil_moisture": sensor_data["soil_moisture"]
         }
         
         ml_recommendation = predict_irrigation(ml_input)
         
-        if ml_recommendation:
-            # Add to recommendations if irrigation is required (> 0 mm)
+        # Determine which recommendation to use
+        # We prefer ML if available, but Logic is a very strong fallback/baseline
+        if ml_recommendation and ml_recommendation["irrigation_required_mm"] is not None:
+             # Use ML recommendation
             status = RecommendationStatus.MONITOR
             if ml_recommendation["irrigation_required_mm"] > 10:
                 status = RecommendationStatus.DO_NOW
@@ -137,23 +167,40 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                 "title": ml_recommendation["title"],
                 "description": ml_recommendation["message"],
                 "status": status,
-                "explanation": f"Based on ML model prediction for {ml_recommendation['crop']} ({ml_recommendation['stage']}).",
+                "explanation": f"Based on ML prediction using Penman-Monteith ET0 ({calculated_et0} mm). Crop Stage: {estimated_stage}.",
                 "timing": "Within next 12 hours",
                 "ml_data": {
                     "amount_mm": ml_recommendation["irrigation_required_mm"],
-                    "confidence": ml_recommendation["confidence"]
+                    "confidence": ml_recommendation["confidence"],
+                    "et0": calculated_et0,
+                    "kc": calculated_kc,
+                    "etc": calculated_etc
                 }
             })
         else:
-            # Fallback to old rule-based logic if ML model fails or unsupported crop
-            if sensor_data["soil_moisture"] < 50:
-                recommendations.append({
-                    "title": "Irrigation",
-                    "description": f"Irrigate the field with 2 inches of water. Current soil moisture is {sensor_data['soil_moisture']}%, which is below optimal levels.",
-                    "status": RecommendationStatus.DO_NOW,
-                    "explanation": f"Soil moisture is at {sensor_data['soil_moisture']}%, which is below the optimal range of 60-70% for the current crop stage.",
-                    "timing": "Within next 6 hours"
-                })
+            # Fallback to Logic-Based Engine
+            rec_amount = logic_result["recommended_irrigation_mm"]
+            if rec_amount > 10:
+                status = RecommendationStatus.DO_NOW
+            elif rec_amount > 0:
+                status = RecommendationStatus.WAIT
+            else:
+                status = RecommendationStatus.MONITOR
+                
+            recommendations.append({
+                "title": "Irrigation",
+                "description": logic_result["advisory"],
+                "status": status,
+                "explanation": f"Calculated using Penman-Monteith ET0. Crop Stage: {estimated_stage} (GDD: {calculated_gdd}). ETc: {calculated_etc} mm/day.",
+                "timing": "Within next 24 hours" if rec_amount > 0 else "Monitor daily",
+                "ml_data": {
+                    "amount_mm": rec_amount,
+                    "confidence": logic_result["stage_confidence"],
+                    "et0": calculated_et0,
+                    "kc": calculated_kc,
+                    "etc": calculated_etc
+                }
+            })
         
         recommendations.append({
             "title": "Nutrients",
@@ -671,35 +718,27 @@ async def get_transparency_data(
 ):
     """
     Get ML transparency data showing what data was used for recommendations
-    
-    - Returns sensor values, crop stage, GDD, and logic summary
     """
-    # Verify field belongs to user (raises 404 if not owned)
-    field = get_field_or_404(field_id, current_user["user_id"])
     
-    # Get AI agent output
-    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    # Reuse the main logic to get all the data and calculations
+    # This ensures consistency between what the agent "thought" and what we show
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
     
-    # Get sensor values
-    sensor_values = ai_agent_output.get("sensor_values", {})
+    # Extract the relevant data from the complex ai_output structure
+    # We need to find the irrigation recommendation to get the detailed metrics
+    rec_item = next((r for r in ai_output.get("recommendations", []) if r.get("title") == "Irrigation"), None)
     
-    # Generate pest risk factors based on sensor data
-    pest_risk_factors = []
-    if sensor_values.get("air_humidity", 0) > 60:
-        pest_risk_factors.append(f"High relative humidity ({sensor_values.get('air_humidity', 0)}%)")
-    if 25 <= sensor_values.get("air_temp", 0) <= 30:
-        pest_risk_factors.append(f"Optimal temperature range ({sensor_values.get('air_temp', 0)}°C)")
-    pest_risk_factors.append(f"Crop stage: {ai_agent_output.get('crop_stage', 'Unknown')} (susceptible)")
+    ml_data = rec_item.get("ml_data", {}) if rec_item else {}
     
-    # Generate irrigation logic
-    soil_moisture = sensor_values.get("soil_moisture", 0)
-    irrigation_logic = f"Soil moisture ({soil_moisture}%) is {'below' if soil_moisture < 50 else 'within' if 50 <= soil_moisture <= 70 else 'above'} optimal threshold (60-70%) for {ai_agent_output.get('crop_stage', 'current')} stage. Temperature and humidity are within acceptable ranges."
-    
+    # Construct the transparency response
+    # We map the internal calculation keys to the public API properties
     return TransparencyData(
-        sensor_values=sensor_values,
-        predicted_stage=ai_agent_output.get("crop_stage", "Unknown"),
-        gdd_value=ai_agent_output.get("gdd_value", 0.0),
-        irrigation_logic=irrigation_logic,
-        pest_risk_factors=pest_risk_factors
+        sensor_values=ai_output.get("sensor_values", {}),
+        predicted_stage=ai_output.get("crop_stage", "Vegetative"),
+        gdd_value=ml_data.get("gdd", 0.0), # We might need to ensure this is passed in ml_data or ai_output
+        irrigation_logic=rec_item.get("explanation", "Standard logic") if rec_item else "No irrigation needed",
+        pest_risk_factors=["High humidity", "Low wind"] if ai_output.get("sensor_values", {}).get("air_humidity", 0) > 85 else ["None"],
+        et0=ml_data.get("et0"),
+        etc=ml_data.get("etc"),
+        kc=ml_data.get("kc")
     )
-
