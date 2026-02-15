@@ -40,6 +40,17 @@ const TransparencyTab = ({ fieldId }) => {
     return <div className="text-center py-8 text-gray-600">No transparency data available</div>;
   }
 
+  // Add defensive checks - handle both camelCase and snake_case from backend
+  const sensorValues = transparencyData?.sensorValues || transparencyData?.sensor_values || {};
+  const pestRiskFactors = Array.isArray(transparencyData?.pestRiskFactors)
+    ? transparencyData.pestRiskFactors
+    : Array.isArray(transparencyData?.pest_risk_factors)
+      ? transparencyData.pest_risk_factors
+      : [];
+  const predictedStage = transparencyData?.predictedStage || transparencyData?.predicted_stage || 'Unknown';
+  const gddValue = transparencyData?.gddValue ?? transparencyData?.gdd_value ?? 0;
+  const irrigationLogic = transparencyData?.irrigationLogic || transparencyData?.irrigation_logic || 'No data available';
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold">{t('transparency')}</h3>
@@ -50,38 +61,44 @@ const TransparencyTab = ({ fieldId }) => {
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('sensorValues')}</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Object.entries(transparencyData.sensorValues).map(([key, value]) => (
+          {Object.entries(sensorValues).map(([key, value]) => (
             <div key={key} className="bg-gray-50 p-3 rounded">
               <p className="text-sm text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
-              <p className="text-lg font-semibold">{value}</p>
+              <p className="text-lg font-semibold">{value ?? 'N/A'}</p>
             </div>
           ))}
         </div>
+        {Object.keys(sensorValues).length === 0 && (
+          <p className="text-gray-500 text-center py-4">No sensor values available</p>
+        )}
       </div>
 
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('predictedStage')}</h4>
-        <p className="text-xl font-semibold text-primary-600">{transparencyData.predictedStage}</p>
+        <p className="text-xl font-semibold text-primary-600">{predictedStage}</p>
       </div>
 
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('gddValue')}</h4>
-        <p className="text-xl font-semibold">{transparencyData.gddValue} GDD</p>
+        <p className="text-xl font-semibold">{gddValue} GDD</p>
         <p className="text-sm text-gray-600 mt-2">Growing Degree Days accumulated</p>
       </div>
 
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('irrigationLogic')}</h4>
-        <p className="text-gray-700">{transparencyData.irrigationLogic}</p>
+        <p className="text-gray-700">{irrigationLogic}</p>
       </div>
 
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('pestRiskFactors')}</h4>
         <ul className="list-disc list-inside space-y-2 text-gray-700">
-          {transparencyData.pestRiskFactors.map((factor, index) => (
+          {pestRiskFactors.map((factor, index) => (
             <li key={index}>{factor}</li>
           ))}
         </ul>
+        {pestRiskFactors.length === 0 && (
+          <p className="text-gray-500 text-center py-4">No pest risk factors identified</p>
+        )}
       </div>
     </div>
   );
