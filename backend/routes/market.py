@@ -11,14 +11,22 @@ router = APIRouter()
 
 @router.get("/prices", response_model=List[MarketPrice])
 async def get_all_prices(current_user: dict = Depends(get_current_user)):
-    """
-    Get all available market prices
-    """
+    """Get all available market prices"""
     try:
         prices = load_market_prices()
-        return [MarketPrice(**p) for p in prices]
+        return [MarketPrice(**{k: v for k, v in p.items() if k != 'price_history'}) for p in prices]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/prices/{crop_name}/history")
+async def get_price_history(crop_name: str, current_user: dict = Depends(get_current_user)):
+    """Get 30-day daily price history for a specific crop"""
+    prices = load_market_prices()
+    crop_data = next((p for p in prices if p["crop_name"].lower() == crop_name.lower()), None)
+    if not crop_data:
+        raise HTTPException(status_code=404, detail=f"Crop '{crop_name}' not found")
+    return {"crop_name": crop_data["crop_name"], "price_history": crop_data.get("price_history", [])}
+
 
 @router.get("/profit-estimation/{field_id}", response_model=ProfitEstimation)
 async def get_profit_estimation(

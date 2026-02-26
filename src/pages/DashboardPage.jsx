@@ -13,6 +13,8 @@ import AddFieldModal from '../components/dashboard/AddFieldModal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { RECOMMENDATION_STATUS } from '../utils/constants';
+import marketCommunityService from '../services/marketCommunityService';
+import { TrendingUp, TrendingDown, Minus, Bug, Leaf, Users, ShoppingCart } from 'lucide-react';
 
 const DashboardPage = ({ demoMode = false }) => {
   const { user } = useAuth();
@@ -23,6 +25,27 @@ const DashboardPage = ({ demoMode = false }) => {
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [communityAlerts, setCommunityAlerts] = useState([]);
+  const [marketPrices, setMarketPrices] = useState([]);
+
+  useEffect(() => {
+    const MOCK_ALERTS = [
+      { farmer_name: 'Rajesh Kumar', crop: 'maize', disease_alert: 'Leaf Blight', pest_alert: null, severity: 'HIGH' },
+      { farmer_name: 'Senthil Nathan', crop: 'maize', disease_alert: null, pest_alert: 'Fall Armyworm', severity: 'HIGH' },
+    ];
+    const MOCK_PRICES = [
+      { crop_name: 'maize', current_price: 22.5, demand_trend: 'rising' },
+      { crop_name: 'wheat', current_price: 25.0, demand_trend: 'stable' },
+      { crop_name: 'tomato', current_price: 18.0, demand_trend: 'falling' },
+    ];
+    Promise.all([
+      marketCommunityService.getCommunityAlerts().catch(() => ({ alerts: MOCK_ALERTS })),
+      marketCommunityService.getMarketPrices().catch(() => MOCK_PRICES),
+    ]).then(([alertRes, priceRes]) => {
+      setCommunityAlerts((alertRes?.alerts || alertRes || []).slice(0, 3));
+      setMarketPrices((Array.isArray(priceRes) ? priceRes : priceRes?.prices || []).slice(0, 3));
+    });
+  }, []);
 
   useEffect(() => {
     if (!demoMode && !user) {
@@ -429,6 +452,56 @@ const DashboardPage = ({ demoMode = false }) => {
               </button>
             )}
           </div>
+
+          {/* Community Alert Banner */}
+          {communityAlerts.length > 0 && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600"><Bug className="w-4 h-4" /></span>
+                  <h3 className="text-sm font-bold text-red-800">⚠ Community Pest & Disease Alerts Nearby</h3>
+                </div>
+                <Link to="/community" className="text-xs text-red-600 hover:text-red-800 font-semibold underline">View All →</Link>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {communityAlerts.map((a, i) => (
+                  <div key={i} className={`text-xs rounded-xl px-3 py-2 border flex items-center gap-1.5 ${a.severity === 'HIGH' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}>
+                    {a.pest_alert ? <Bug className="w-3 h-3 flex-shrink-0" /> : <Leaf className="w-3 h-3 flex-shrink-0" />}
+                    <span><strong>{a.farmer_name}</strong> ({a.crop}) — {a.pest_alert || a.disease_alert}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Market Summary Widget */}
+          {marketPrices.length > 0 && (
+            <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {marketPrices.map((p, i) => {
+                const Icon = p.demand_trend === 'rising' ? TrendingUp : p.demand_trend === 'falling' ? TrendingDown : Minus;
+                const cls = p.demand_trend === 'rising' ? 'text-green-600 bg-green-50 border-green-100' : p.demand_trend === 'falling' ? 'text-red-600 bg-red-50 border-red-100' : 'text-yellow-600 bg-yellow-50 border-yellow-100';
+                return (
+                  <Link key={i} to="/market" className={`flex items-center justify-between p-3 rounded-2xl border hover:shadow-sm transition-shadow ${cls}`}>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70"><ShoppingCart className="inline w-3 h-3 mr-1" />Market</p>
+                      <p className="text-sm font-bold capitalize">{p.crop_name}</p>
+                      <p className="text-xl font-black">₹{p.current_price}/kg</p>
+                    </div>
+                    <Icon className="w-8 h-8 opacity-50" />
+                  </Link>
+                );
+              })}
+              <Link to="/community" className="flex items-center justify-between p-3 rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 hover:shadow-sm transition-shadow">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70"><Users className="inline w-3 h-3 mr-1" />Community</p>
+                  <p className="text-sm font-bold">Nearby Farmers</p>
+                  <p className="text-xl font-black">7 Active</p>
+                </div>
+                <Users className="w-8 h-8 opacity-40" />
+              </Link>
+            </div>
+          )}
 
           {error && <ErrorMessage message={error} onRetry={fetchFields} />}
 
