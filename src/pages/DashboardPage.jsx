@@ -443,78 +443,139 @@ const DashboardPage = ({ demoMode = false }) => {
         </div>
       )}
       <main className="flex-grow bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('myFields')}</h1>
-            {!demoMode && (
-              <button onClick={handleAddField} className="btn-primary w-full sm:w-auto">
-                {t('addNewField')}
-              </button>
-            )}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+
+          {/* ── TOP ROW: Community Alert + Market Prices ─────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Community Alert Card */}
+            <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-red-50 bg-red-50">
+                <div className="flex items-center gap-2">
+                  <Bug className="w-5 h-5 text-red-500" />
+                  <h2 className="text-base font-bold text-red-900">Pest &amp; Disease Alerts</h2>
+                  {communityAlerts.length > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      {communityAlerts.length} Active
+                    </span>
+                  )}
+                </div>
+                <Link to="/community" className="text-xs text-red-600 hover:text-red-800 font-semibold flex items-center gap-1">
+                  View Community →
+                </Link>
+              </div>
+              <div className="p-5 space-y-3">
+                {communityAlerts.length > 0 ? communityAlerts.map((a, i) => (
+                  <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${a.severity === 'HIGH' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
+                    <div className={`mt-0.5 p-1.5 rounded-lg ${a.severity === 'HIGH' ? 'bg-red-100' : 'bg-amber-100'}`}>
+                      {a.pest_alert ? <Bug className={`w-4 h-4 ${a.severity === 'HIGH' ? 'text-red-600' : 'text-amber-600'}`} /> : <Leaf className={`w-4 h-4 ${a.severity === 'HIGH' ? 'text-red-600' : 'text-amber-600'}`} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-gray-900 truncate">{a.farmer_name}</p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${a.severity === 'HIGH' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{a.severity}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 capitalize mt-0.5">Crop: <span className="font-semibold">{a.crop}</span></p>
+                      <p className={`text-xs font-semibold mt-1 ${a.severity === 'HIGH' ? 'text-red-700' : 'text-amber-700'}`}>
+                        {a.pest_alert ? `🐛 ${a.pest_alert}` : `🍂 ${a.disease_alert}`}
+                      </p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-6 text-gray-400">
+                    <Leaf className="w-8 h-8 mx-auto mb-2 text-green-300" />
+                    <p className="text-sm font-medium text-green-600">No active alerts</p>
+                    <p className="text-xs text-gray-400">Your community is healthy!</p>
+                  </div>
+                )}
+                <Link to="/community" className="block w-full text-center text-xs font-semibold text-red-600 hover:text-red-800 mt-2 py-2 rounded-xl hover:bg-red-50 transition-colors border border-red-100">
+                  See all farmers &amp; detailed alerts →
+                </Link>
+              </div>
+            </div>
+
+            {/* Market Prices Card */}
+            <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-emerald-50 bg-emerald-50">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                  <h2 className="text-base font-bold text-emerald-900">Today's Market Prices</h2>
+                </div>
+                <Link to="/market" className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold">
+                  Full Market →
+                </Link>
+              </div>
+              <div className="p-5 space-y-3">
+                {marketPrices.map((p, i) => {
+                  const Icon = p.demand_trend === 'rising' ? TrendingUp : p.demand_trend === 'falling' ? TrendingDown : Minus;
+                  const trendCls = p.demand_trend === 'rising'
+                    ? { bg: 'bg-green-50 border-green-100', label: 'text-green-700 bg-green-100', icon: 'text-green-500', price: 'text-green-700' }
+                    : p.demand_trend === 'falling'
+                      ? { bg: 'bg-red-50 border-red-100', label: 'text-red-700 bg-red-100', icon: 'text-red-500', price: 'text-red-700' }
+                      : { bg: 'bg-yellow-50 border-yellow-100', label: 'text-yellow-700 bg-yellow-100', icon: 'text-yellow-500', price: 'text-yellow-700' };
+                  return (
+                    <Link key={i} to="/market" className={`flex items-center justify-between p-3 rounded-xl border hover:shadow-sm transition-all ${trendCls.bg}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${trendCls.label}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 font-medium capitalize">{p.crop_name}</p>
+                          <p className={`text-lg font-black ${trendCls.price}`}>₹{p.current_price}<span className="text-xs font-normal text-gray-400">/kg</span></p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase ${trendCls.label}`}>
+                          {p.demand_trend}
+                        </span>
+                        <p className="text-[10px] text-gray-400 mt-1">Tap for 30-day history</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+                <Link to="/community" className="flex items-center justify-between p-3 rounded-xl border border-blue-100 bg-blue-50 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><Users className="w-4 h-4" /></div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Community</p>
+                      <p className="text-lg font-black text-blue-700">7 Farmers<span className="text-xs font-normal text-gray-400 ml-1">nearby</span></p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700 uppercase">Active</span>
+                </Link>
+              </div>
+            </div>
           </div>
 
-          {/* Community Alert Banner */}
-          {communityAlerts.length > 0 && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-red-600"><Bug className="w-4 h-4" /></span>
-                  <h3 className="text-sm font-bold text-red-800">⚠ Community Pest & Disease Alerts Nearby</h3>
-                </div>
-                <Link to="/community" className="text-xs text-red-600 hover:text-red-800 font-semibold underline">View All →</Link>
+          {/* ── MY FIELDS SECTION ─────────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <h2 className="text-base font-bold text-gray-900">{t('myFields')}</h2>
+                <span className="text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">{fields.length} Field{fields.length !== 1 ? 's' : ''}</span>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                {communityAlerts.map((a, i) => (
-                  <div key={i} className={`text-xs rounded-xl px-3 py-2 border flex items-center gap-1.5 ${a.severity === 'HIGH' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-amber-100 text-amber-800 border-amber-200'
-                    }`}>
-                    {a.pest_alert ? <Bug className="w-3 h-3 flex-shrink-0" /> : <Leaf className="w-3 h-3 flex-shrink-0" />}
-                    <span><strong>{a.farmer_name}</strong> ({a.crop}) — {a.pest_alert || a.disease_alert}</span>
-                  </div>
-                ))}
-              </div>
+              {!demoMode && (
+                <button onClick={handleAddField} className="btn-primary text-sm py-2 px-4">
+                  {t('addNewField')}
+                </button>
+              )}
             </div>
-          )}
-
-          {/* Market Summary Widget */}
-          {marketPrices.length > 0 && (
-            <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {marketPrices.map((p, i) => {
-                const Icon = p.demand_trend === 'rising' ? TrendingUp : p.demand_trend === 'falling' ? TrendingDown : Minus;
-                const cls = p.demand_trend === 'rising' ? 'text-green-600 bg-green-50 border-green-100' : p.demand_trend === 'falling' ? 'text-red-600 bg-red-50 border-red-100' : 'text-yellow-600 bg-yellow-50 border-yellow-100';
-                return (
-                  <Link key={i} to="/market" className={`flex items-center justify-between p-3 rounded-2xl border hover:shadow-sm transition-shadow ${cls}`}>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70"><ShoppingCart className="inline w-3 h-3 mr-1" />Market</p>
-                      <p className="text-sm font-bold capitalize">{p.crop_name}</p>
-                      <p className="text-xl font-black">₹{p.current_price}/kg</p>
-                    </div>
-                    <Icon className="w-8 h-8 opacity-50" />
-                  </Link>
-                );
-              })}
-              <Link to="/community" className="flex items-center justify-between p-3 rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 hover:shadow-sm transition-shadow">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70"><Users className="inline w-3 h-3 mr-1" />Community</p>
-                  <p className="text-sm font-bold">Nearby Farmers</p>
-                  <p className="text-xl font-black">7 Active</p>
+            <div className="p-5">
+              {error && <ErrorMessage message={error} onRetry={fetchFields} />}
+              {fields.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 mb-4">{t('noFields')}</p>
+                  <button onClick={handleAddField} className="btn-primary">{t('addNewField')}</button>
                 </div>
-                <Users className="w-8 h-8 opacity-40" />
-              </Link>
+              ) : (
+                <FieldList fields={fields} demoMode={demoMode} />
+              )}
             </div>
-          )}
+          </div>
 
-          {error && <ErrorMessage message={error} onRetry={fetchFields} />}
-
-          {fields.length === 0 ? (
-            <div className="card text-center py-12">
-              <p className="text-gray-600 mb-4">{t('noFields')}</p>
-              <button onClick={handleAddField} className="btn-primary">
-                {t('addNewField')}
-              </button>
-            </div>
-          ) : (
-            <FieldList fields={fields} demoMode={demoMode} />
-          )}
         </div>
       </main>
       <Footer />
