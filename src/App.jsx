@@ -14,6 +14,8 @@ import AdvisoryHistoryPage from './pages/AdvisoryHistoryPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import ContactUsPage from './pages/ContactUsPage';
+import CommunityPage from './pages/CommunityPage';
+import MarketPage from './pages/MarketPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -82,6 +84,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/community"
+              element={
+                <ProtectedRoute>
+                  <CommunityPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/market"
+              element={
+                <ProtectedRoute>
+                  <MarketPage />
                 </ProtectedRoute>
               }
             />

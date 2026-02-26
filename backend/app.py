@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-from routes import auth, farmers, fields, sensors, ai, weather, advisories
+from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market
 
 # Load environment variables
 load_dotenv()
@@ -40,6 +40,8 @@ app.include_router(fields.router, prefix="/api/fields", tags=["Fields"])
 app.include_router(sensors.router, prefix="/api", tags=["Sensors"])
 app.include_router(weather.router, prefix="/api/weather", tags=["Weather"])
 app.include_router(advisories.router, prefix="/api/advisories", tags=["Advisories"])
+app.include_router(community.router, prefix="/api/community", tags=["Community"])
+app.include_router(market.router, prefix="/api/market", tags=["Market"])
 
 
 @app.get("/health")

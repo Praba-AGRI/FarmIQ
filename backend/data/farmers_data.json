@@ -1,0 +1,86 @@
+[
+    {
+        "farmer_id": "farmer_001",
+        "name": "Rajesh Kumar",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6622,
+        "longitude": 77.0065,
+        "crop_current": "maize",
+        "sowing_date": "2024-01-15",
+        "expected_harvest_date": "2024-05-15",
+        "area_acres": 2.5
+    },
+    {
+        "farmer_id": "farmer_002",
+        "name": "Senthil Nathan",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6650,
+        "longitude": 77.0080,
+        "crop_current": "maize",
+        "sowing_date": "2024-01-20",
+        "expected_harvest_date": "2024-05-20",
+        "area_acres": 1.8
+    },
+    {
+        "farmer_id": "farmer_003",
+        "name": "Mani Kandan",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6610,
+        "longitude": 77.0040,
+        "crop_current": "maize",
+        "sowing_date": "2024-01-10",
+        "expected_harvest_date": "2024-05-10",
+        "area_acres": 3.2
+    },
+    {
+        "farmer_id": "farmer_004",
+        "name": "Priya Dharshini",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6680,
+        "longitude": 77.0100,
+        "crop_current": "wheat",
+        "sowing_date": "2024-02-01",
+        "expected_harvest_date": "2024-06-01",
+        "area_acres": 1.5
+    },
+    {
+        "farmer_id": "farmer_005",
+        "name": "Vijay Kumar",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6590,
+        "longitude": 77.0020,
+        "crop_current": "maize",
+        "sowing_date": "2024-01-18",
+        "expected_harvest_date": "2024-05-18",
+        "area_acres": 2.0
+    },
+    {
+        "farmer_id": "farmer_006",
+        "name": "Anitha Devi",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6700,
+        "longitude": 77.0120,
+        "crop_current": "tomato",
+        "sowing_date": "2024-02-10",
+        "expected_harvest_date": "2024-05-10",
+        "area_acres": 1.0
+    },
+    {
+        "farmer_id": "farmer_007",
+        "name": "Ramesh Babu",
+        "district": "Coimbatore",
+        "village": "Pollachi",
+        "latitude": 10.6550,
+        "longitude": 77.0000,
+        "crop_current": "maize",
+        "sowing_date": "2024-01-25",
+        "expected_harvest_date": "2024-05-25",
+        "area_acres": 4.0
+    }
+]

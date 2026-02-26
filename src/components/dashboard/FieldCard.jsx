@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import { RECOMMENDATION_STATUS } from '../../utils/constants';
+import ProfitabilityPanel from '../field/ProfitabilityPanel';
 
 const FieldCard = ({ field, demoMode = false }) => {
   const { t } = useLanguage();
@@ -234,6 +235,11 @@ const FieldCard = ({ field, demoMode = false }) => {
             ) : (
               <p className="text-xs text-gray-500">{t('noActiveAlerts')}</p>
             )}
+          </div>
+
+          {/* Profitability Panel */}
+          <div className="border-t pt-3" onClick={(e) => e.preventDefault()}>
+            <ProfitabilityPanel fieldId={field.id} />
           </div>
         </div>
       </div>

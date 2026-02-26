@@ -15,6 +15,7 @@ import RecommendationsTab from '../components/tabs/RecommendationsTab';
 import AIChatTab from '../components/tabs/AIChatTab';
 import WeatherTab from '../components/tabs/WeatherTab';
 import TransparencyTab from '../components/tabs/TransparencyTab';
+import MarketAdvisoryTab from '../components/tabs/MarketAdvisoryTab';
 
 const FieldDetailPage = ({ demoMode = false }) => {
   const { id } = useParams();
@@ -329,6 +330,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
     { id: 'recommendations', label: t('recommendations') },
     { id: 'weather', label: t('weatherAlerts') },
     { id: 'transparency', label: t('transparency') },
+    { id: 'market_advisory', label: 'Market Advisory' },
   ];
 
   if (loading) {
@@ -663,6 +665,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
             {activeTab === 'recommendations' && field.id && <RecommendationsTab fieldId={String(field.id)} />}
             {activeTab === 'weather' && field.id && <WeatherTab fieldId={String(field.id)} location={field.location} demoMode={demoMode} />}
             {activeTab === 'transparency' && field.id && <TransparencyTab fieldId={String(field.id)} />}
+            {activeTab === 'market_advisory' && field.id && <MarketAdvisoryTab fieldId={String(field.id)} />}
           </div>
         </div>
       </main>

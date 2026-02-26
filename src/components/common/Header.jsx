@@ -10,7 +10,7 @@ const Header = () => {
   const { t } = useLanguage();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
   // Detect if we're in demo mode by checking if the path starts with /demo
   const isDemoMode = location.pathname.startsWith('/demo');
 
@@ -21,9 +21,9 @@ const Header = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
               <div className="flex-shrink-0 h-11 w-11 sm:h-14 sm:w-14 rounded-full shadow-lg bg-white p-0 flex items-center justify-center overflow-hidden">
-                <img 
-                  src="/website-logo.png" 
-                  alt="FarmIQ Logo" 
+                <img
+                  src="/website-logo.png"
+                  alt="FarmIQ Logo"
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -37,15 +37,21 @@ const Header = () => {
               </div>
             </Link>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <LanguageSwitcher />
-            
+
             {(user || isDemoMode) ? (
               <>
                 <Link to={isDemoMode ? "/demo" : "/dashboard"} className="text-gray-700 hover:text-primary-600">
                   {t('dashboard')}
+                </Link>
+                <Link to="/community" className="text-gray-700 hover:text-primary-600">
+                  Community
+                </Link>
+                <Link to="/market" className="text-gray-700 hover:text-primary-600">
+                  Market
                 </Link>
                 {!isDemoMode && (
                   <>
@@ -96,7 +102,7 @@ const Header = () => {
               <div className="px-2">
                 <LanguageSwitcher />
               </div>
-              
+
               {(user || isDemoMode) ? (
                 <>
                   <Link
@@ -105,6 +111,20 @@ const Header = () => {
                     className="block px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-primary-600 rounded-md"
                   >
                     {t('dashboard')}
+                  </Link>
+                  <Link
+                    to="/community"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-primary-600 rounded-md"
+                  >
+                    Community
+                  </Link>
+                  <Link
+                    to="/market"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100 hover:text-primary-600 rounded-md"
+                  >
+                    Market
                   </Link>
                   {!isDemoMode && (
                     <>

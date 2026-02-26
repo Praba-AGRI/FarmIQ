@@ -1,0 +1,32 @@
+[
+    {
+        "crop_name": "maize",
+        "district": "Coimbatore",
+        "current_price": 22.5,
+        "price_7_day_avg": 21.8,
+        "price_30_day_avg": 20.5,
+        "seasonal_avg": 19.5,
+        "volatility_index": 0.12,
+        "demand_trend": "rising"
+    },
+    {
+        "crop_name": "wheat",
+        "district": "Coimbatore",
+        "current_price": 25.0,
+        "price_7_day_avg": 25.2,
+        "price_30_day_avg": 24.8,
+        "seasonal_avg": 24.0,
+        "volatility_index": 0.05,
+        "demand_trend": "stable"
+    },
+    {
+        "crop_name": "tomato",
+        "district": "Coimbatore",
+        "current_price": 18.0,
+        "price_7_day_avg": 22.0,
+        "price_30_day_avg": 35.0,
+        "seasonal_avg": 25.0,
+        "volatility_index": 0.45,
+        "demand_trend": "falling"
+    }
+]

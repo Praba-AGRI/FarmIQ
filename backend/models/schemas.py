@@ -301,13 +301,66 @@ class AdvisoryItem(BaseModel):
     status: RecommendationStatus
     message: str
 
-
 class AdvisoryResponse(BaseModel):
     advisory_id: str
     field_id: str
     field_name: str
     date: str
     recommendations: List[AdvisoryItem]
+
+
+# Farmer and Community Schemas
+class Farmer(BaseModel):
+    farmer_id: str
+    name: str
+    district: str
+    village: str
+    latitude: float
+    longitude: float
+    crop_current: str
+    sowing_date: str
+    expected_harvest_date: str
+    area_acres: float
+
+class CropDistribution(BaseModel):
+    crop_distribution: dict # {crop_name: percentage}
+    dominant_crop: str
+    oversupply_risk: bool
+
+class CommunityInsights(BaseModel):
+    nearby_farmers: List[Farmer]
+    total_count: int
+    distribution: CropDistribution
+
+# Market Intelligence Schemas
+class MarketPrice(BaseModel):
+    crop_name: str
+    district: str
+    current_price: float
+    price_7_day_avg: float
+    price_30_day_avg: float
+    seasonal_avg: float
+    volatility_index: float
+    demand_trend: str # "rising", "stable", "falling"
+
+class MarketDemandIndex(str, Enum):
+    HIGH_DEMAND = "HIGH_DEMAND"
+    MODERATE_DEMAND = "MODERATE_DEMAND"
+    OVERSUPPLY_RISK = "OVERSUPPLY_RISK"
+
+class ProfitEstimation(BaseModel):
+    estimated_revenue: float
+    estimated_cost: float
+    net_profit: float
+    profit_score: int # 0-100
+
+class MarketAdvisory(BaseModel):
+    recommended_crop: str
+    community_density: str
+    market_demand: MarketDemandIndex
+    expected_profit: float
+    risk_level: str
+    reasoning_summary: str
 
 
 
