@@ -2,12 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Target, Users, TrendingUp, AlertCircle, DollarSign, Brain } from 'lucide-react';
 import marketCommunityService from '../../services/marketCommunityService';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorMessage from '../common/ErrorMessage';
+
+const MOCK_ADVISORY = {
+    recommended_crop: 'Wheat',
+    community_density: '16.7%',
+    market_demand: 'MODERATE_DEMAND',
+    expected_profit: 22000,
+    risk_level: 'MODERATE',
+    reasoning_summary:
+        'Over 60% of farmers in your region are growing maize, creating oversupply risk. Wheat shows stable demand with lower community saturation (16.7%), making it a safer alternative. Market demand for wheat is moderate with stable price trends. Expected profitability is reasonable at current price levels.',
+};
 
 const MarketAdvisoryTab = ({ fieldId }) => {
     const [advisory, setAdvisory] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [usingMock, setUsingMock] = useState(false);
 
     useEffect(() => {
         const fetchAdvisory = async () => {
@@ -16,18 +25,17 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                 const data = await marketCommunityService.getMarketAdvisory(fieldId);
                 setAdvisory(data);
             } catch (err) {
-                setError("Failed to load market advisory.");
-                console.error(err);
+                console.warn('Backend unavailable, showing demo advisory:', err.message);
+                setAdvisory(MOCK_ADVISORY);
+                setUsingMock(true);
             } finally {
                 setLoading(false);
             }
         };
-
         if (fieldId) fetchAdvisory();
     }, [fieldId]);
 
     if (loading) return <LoadingSpinner />;
-    if (error) return <ErrorMessage message={error} />;
     if (!advisory) return null;
 
     const getDemandColor = (demand) => {
@@ -50,11 +58,16 @@ const MarketAdvisoryTab = ({ fieldId }) => {
 
     return (
         <div className="space-y-6">
+            {usingMock && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    Backend unreachable. Showing demo advisory data.
+                </div>
+            )}
+
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center space-x-4">
-                    <div className="bg-emerald-100 p-4 rounded-2xl text-emerald-600">
-                        <Brain size={32} />
-                    </div>
+                    <div className="bg-emerald-100 p-4 rounded-2xl text-emerald-600"><Brain size={32} /></div>
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">Agro-Economic Advisory</h3>
                         <p className="text-sm text-gray-600 mt-1 max-w-md">
@@ -69,7 +82,6 @@ const MarketAdvisoryTab = ({ fieldId }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Community Saturation */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <Users className="text-blue-500 w-5 h-5" />
@@ -79,12 +91,11 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                     <p className="text-xl font-bold text-gray-800 mt-1">{advisory.community_density}</p>
                 </div>
 
-                {/* Market Demand */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <TrendingUp className="text-purple-500 w-5 h-5" />
                         <span className={`text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded border ${getDemandColor(advisory.market_demand)}`}>
-                            {advisory.market_demand.replace('_', ' ')}
+                            {advisory.market_demand.replace(/_/g, ' ')}
                         </span>
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Market Demand</p>
@@ -93,16 +104,14 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                     </p>
                 </div>
 
-                {/* Expected Profit */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <DollarSign className="text-emerald-500 w-5 h-5" />
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Est. Net Profit</p>
-                    <p className="text-xl font-bold text-emerald-600 mt-1">₹{advisory.expected_profit.toLocaleString()}</p>
+                    <p className="text-xl font-bold text-emerald-600 mt-1">₹{Number(advisory.expected_profit).toLocaleString()}</p>
                 </div>
 
-                {/* Risk Level */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <AlertCircle className="text-orange-500 w-5 h-5" />
@@ -115,18 +124,12 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-hidden relative">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                    <Brain size={120} />
-                </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5"><Brain size={120} /></div>
                 <h4 className="text-md font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-emerald-600" />
-                    Reasoning Summary
+                    <Target className="w-5 h-5 text-emerald-600" /> Reasoning Summary
                 </h4>
-                <p className="text-gray-700 leading-relaxed z-10 relative">
-                    {advisory.reasoning_summary}
-                </p>
-
+                <p className="text-gray-700 leading-relaxed">{advisory.reasoning_summary}</p>
                 <div className="mt-8 pt-6 border-t border-gray-50 flex flex-wrap gap-4">
                     <button className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
                         Implement This Recommendation
