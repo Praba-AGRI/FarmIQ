@@ -19,6 +19,7 @@ IMPORTANT DESIGN RULES:
 This layer is LANGUAGE + REASONING ONLY.
 """
 
+import asyncio
 import json
 import os
 from datetime import datetime
@@ -48,6 +49,17 @@ if OPENROUTER_API_KEY:
         client = None
 else:
     print("Warning: OPENROUTER_API_KEY environment variable is not set. OpenRouter API will not be available.")
+
+# -------------------------------------------------
+# FALLBACK MODEL LIST (free tier, tried in order)
+# -------------------------------------------------
+FALLBACK_MODELS = [
+    "openai/gpt-oss-120b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "deepseek/deepseek-r1-distill-llama-70b:free",
+]
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -176,23 +188,37 @@ async def reasoning_agri_assistant(
             "instruction": "Use available data when present. If data is marked as not available, provide general agricultural advice based on ICAR/TNAU knowledge and the farmer's question."
         }
 
-        # Call OpenRouter API with OpenAI SDK
-        response = await client.chat.completions.create(
-            model="openai/gpt-oss-120b:free",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)}
-            ],
-            extra_body={"reasoning": {"enabled": True}},
-        )
-        
-        # Extract the assistant message
-        message = response.choices[0].message
-        response_content = message.content
+        # Call OpenRouter API with model fallback + retry on rate limit
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)}
+        ]
 
-        # Note: reasoning_details might be available in message.reasoning_details if supported by model/SDK version
-        # We process response_content primarily
-        return response_content
+        last_error = None
+        for model in FALLBACK_MODELS:
+            for attempt in range(3):  # up to 3 retries per model
+                try:
+                    response = await client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                    )
+                    # Extract the assistant message
+                    response_content = response.choices[0].message.content
+                    return response_content
+                except RateLimitError as e:
+                    last_error = e
+                    wait = 2 ** attempt  # 1s, 2s, 4s backoff
+                    print(f"Rate limit on '{model}' (attempt {attempt+1}). Waiting {wait}s...")
+                    await asyncio.sleep(wait)
+                    continue  # retry same model once more before switching
+                except Exception as e:
+                    last_error = e
+                    break  # non-rate-limit error — skip to next model
+            # All retries for this model exhausted, move to next
+            print(f"Switching from '{model}' due to rate limit or error.")
+
+        # All models failed
+        raise last_error if last_error else Exception("All fallback models failed.")
 
     except Exception as e:
         # Log the error for debugging
