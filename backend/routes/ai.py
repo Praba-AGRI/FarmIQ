@@ -106,11 +106,16 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     
                     has_real_sensors = sensor_response is not None
                     
-                    # Prioritize sensors for current values, API for extremes/forecasts
+                    # Prioritize sensors for current temperature and humidity
                     if not has_real_sensors:
                         weather_data["temp_avg"] = transformed["current"]["temperature"]
                         weather_data["humidity_avg"] = transformed["current"]["humidity"]
-                        weather_data["wind_speed"] = transformed["current"]["wind_speed"]
+                    
+                    # ALWAYS use wind speed from OpenWeatherMap as requested
+                    weather_data["wind_speed"] = transformed["current"]["wind_speed"]
+                    
+                    # Also update sensor_data for consistency in display/transparency
+                    sensor_data["wind_speed"] = transformed["current"]["wind_speed"]
                     
                     weather_data["temp_max"] = transformed["daily"][0]["temp_max"]
                     weather_data["temp_min"] = transformed["daily"][0]["temp_min"]
