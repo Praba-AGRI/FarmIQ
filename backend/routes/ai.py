@@ -118,28 +118,39 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     weather_data["rainfall_forecast"] = sum(h["rain"] for h in transformed["hourly"][:24])
                     
                     # 3. Calculate actual weather history for GDD (last 30 days or since sowing)
+                    import asyncio
                     from datetime import datetime, timedelta
                     sowing_date_str = field.sowing_date
                     try:
-                        sowing_date = datetime.strptime(sowing_date_str, "%Y-%m-%d")
+                        if not sowing_date_str:
+                            print("Sowing date is missing, defaulting to 30 days ago")
+                            sowing_date = datetime.now() - timedelta(days=30)
+                        else:
+                            sowing_date = datetime.strptime(sowing_date_str, "%Y-%m-%d")
+                        
                         today = datetime.now()
                         
                         # Limit to last 30 days to avoid too many API calls, or since sowing
+                        # OpenWeather history might have latency, so we go up to yesterday
                         start_date = max(sowing_date, today - timedelta(days=30))
                         
-                        history = []
+                        history_tasks = []
                         current_date = start_date
-                        while current_date < today:
+                        while current_date.date() < today.date():
                             date_str = current_date.strftime("%Y-%m-%d")
-                            # Try to get day summary
-                            day_data = await get_day_summary(coords["lat"], coords["lon"], date_str)
+                            history_tasks.append(get_day_summary(coords["lat"], coords["lon"], date_str))
+                            current_date += timedelta(days=1)
+                        
+                        # Fetch all day summaries in parallel to save time
+                        day_summaries = await asyncio.gather(*history_tasks)
+                        
+                        history = []
+                        for day_data in day_summaries:
                             if day_data:
-                                # Map to format expected by irrigation_logic
                                 history.append({
                                     "tmax": day_data.get("temperature", {}).get("max", 30),
                                     "tmin": day_data.get("temperature", {}).get("min", 20)
                                 })
-                            current_date += timedelta(days=1)
                         
                         weather_data["weather_history"] = history
                     except Exception as e:
@@ -784,7 +795,7 @@ async def get_transparency_data(
     return TransparencyData(
         sensor_values=ai_output.get("sensor_values", {}),
         predicted_stage=ai_output.get("crop_stage", "Vegetative"),
-        gdd_value=ml_data.get("gdd", 0.0), # We might need to ensure this is passed in ml_data or ai_output
+        gdd_value=ai_output.get("gdd_value", 0.0),
         irrigation_logic=rec_item.get("explanation", "Standard logic") if rec_item else "No irrigation needed",
         pest_risk_factors=["High humidity", "Low wind"] if ai_output.get("sensor_values", {}).get("air_humidity", 0) > 85 else ["None"],
         et0=ml_data.get("et0"),
