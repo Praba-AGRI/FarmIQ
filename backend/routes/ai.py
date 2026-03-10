@@ -14,7 +14,7 @@ from routes.sensors import get_current_sensor_readings
 from routes.advisories import get_advisory_history
 from services.storage import load_json, save_json
 from services.reasoning_layer import reasoning_agri_assistant
-from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response
+from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response, get_day_summary
 from services.irrigation_ml_service import predict_irrigation
 from services.irrigation_logic import irrigation_recommendation
 from utils.helpers import get_timestamp
@@ -104,13 +104,48 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     onecall_data = await get_onecall_weather(coords["lat"], coords["lon"])
                     transformed = transform_onecall_response(onecall_data)
                     
-                    # Update weather_data with real values
-                    weather_data["temp_avg"] = transformed["current"]["temperature"]
-                    weather_data["humidity_avg"] = transformed["current"]["humidity"]
-                    weather_data["wind_speed"] = transformed["current"]["wind_speed"]
+                    has_real_sensors = sensor_response is not None
+                    
+                    # Prioritize sensors for current values, API for extremes/forecasts
+                    if not has_real_sensors:
+                        weather_data["temp_avg"] = transformed["current"]["temperature"]
+                        weather_data["humidity_avg"] = transformed["current"]["humidity"]
+                        weather_data["wind_speed"] = transformed["current"]["wind_speed"]
+                    
+                    weather_data["temp_max"] = transformed["daily"][0]["temp_max"]
+                    weather_data["temp_min"] = transformed["daily"][0]["temp_min"]
                     # Rainfall forecast (next 24h as rough estimate for forecast)
                     weather_data["rainfall_forecast"] = sum(h["rain"] for h in transformed["hourly"][:24])
-                    # Note: rainfall_last_3d and solar_radiation would ideally come from a history/sensor service
+                    
+                    # 3. Calculate actual weather history for GDD (last 30 days or since sowing)
+                    from datetime import datetime, timedelta
+                    sowing_date_str = field.sowing_date
+                    try:
+                        sowing_date = datetime.strptime(sowing_date_str, "%Y-%m-%d")
+                        today = datetime.now()
+                        
+                        # Limit to last 30 days to avoid too many API calls, or since sowing
+                        start_date = max(sowing_date, today - timedelta(days=30))
+                        
+                        history = []
+                        current_date = start_date
+                        while current_date < today:
+                            date_str = current_date.strftime("%Y-%m-%d")
+                            # Try to get day summary
+                            day_data = await get_day_summary(coords["lat"], coords["lon"], date_str)
+                            if day_data:
+                                # Map to format expected by irrigation_logic
+                                history.append({
+                                    "tmax": day_data.get("temperature", {}).get("max", 30),
+                                    "tmin": day_data.get("temperature", {}).get("min", 20)
+                                })
+                            current_date += timedelta(days=1)
+                        
+                        weather_data["weather_history"] = history
+                    except Exception as e:
+                        print(f"Error calculating weather history: {e}")
+                        weather_data["weather_history"] = []
+
         except Exception as e:
             print(f"Error fetching weather context for ML model: {e}")
 
@@ -121,10 +156,10 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         # based on real-time weather data
         logic_input = {
             "crop": field.crop,
-            "weather_history": [], # TODO: pass real history if available
+            "weather_history": weather_data.get("weather_history", []),
             "temp_avg": weather_data.get("temp_avg", 30),
-            "temp_max": weather_data.get("temp_avg", 30) + 5, # Estimate
-            "temp_min": weather_data.get("temp_avg", 30) - 5, # Estimate
+            "temp_max": weather_data.get("temp_max", weather_data.get("temp_avg", 30) + 5),
+            "temp_min": weather_data.get("temp_min", weather_data.get("temp_avg", 30) - 5),
             "humidity": weather_data.get("humidity_avg", 60),
             "wind_speed": weather_data.get("wind_speed", 2.0),
             "solar_radiation": weather_data.get("solar_radiation", 15.0),
@@ -174,7 +209,8 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     "confidence": ml_recommendation["confidence"],
                     "et0": calculated_et0,
                     "kc": calculated_kc,
-                    "etc": calculated_etc
+                    "etc": calculated_etc,
+                    "gdd": calculated_gdd
                 }
             })
         else:
@@ -198,7 +234,8 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     "confidence": logic_result["stage_confidence"],
                     "et0": calculated_et0,
                     "kc": calculated_kc,
-                    "etc": calculated_etc
+                    "etc": calculated_etc,
+                    "gdd": calculated_gdd
                 }
             })
         
@@ -266,8 +303,8 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         })
         
         return {
-            "crop_stage": crop_stage,
-            "gdd_value": gdd_value,
+            "crop_stage": estimated_stage if estimated_stage != "unknown" else crop_stage,
+            "gdd_value": calculated_gdd,
             "recommendations": recommendations,
             "sensor_values": sensor_data
         }
@@ -282,7 +319,15 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                     "description": "Monitor soil moisture levels",
                     "status": RecommendationStatus.MONITOR,
                     "explanation": "Regular monitoring recommended",
-                    "timing": "Daily"
+                    "timing": "Daily",
+                    "ml_data": {
+                        "amount_mm": 0,
+                        "confidence": 50,
+                        "et0": 0,
+                        "kc": 1,
+                        "etc": 0,
+                        "gdd": 0
+                    }
                 }
             ],
             "sensor_values": {}
@@ -726,7 +771,11 @@ async def get_transparency_data(
     
     # Extract the relevant data from the complex ai_output structure
     # We need to find the irrigation recommendation to get the detailed metrics
-    rec_item = next((r for r in ai_output.get("recommendations", []) if r.get("title") == "Irrigation"), None)
+    rec_item = next(
+        (r for r in ai_output.get("recommendations", []) 
+         if r.get("title") in ["Irrigation", "Irrigation Recommendation"]), 
+        None
+    )
     
     ml_data = rec_item.get("ml_data", {}) if rec_item else {}
     
