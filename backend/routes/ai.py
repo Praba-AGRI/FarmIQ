@@ -189,16 +189,24 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             }
         }
     except Exception as e:
-        print(f"Error in get_ai_agent_output: {e}")
+        print(f"CRITICAL ERROR in get_ai_agent_output: {str(e)}")
         import traceback
         traceback.print_exc()
-        # Fallback
+        # Fallback with at least one item to avoid empty UI
         return {
-            "crop_stage": "Vegetative",
+            "crop_stage": "Monitoring",
             "gdd_value": 0.0,
-            "recommendations": [],
+            "recommendations": [
+                {
+                    "title": "System Status",
+                    "description": "AI models are currently initializing or updating. Please check sensor status.",
+                    "status": RecommendationStatus.MONITOR,
+                    "explanation": f"The advisory system encountered a processing error: {str(e)[:100]}. Real-time data is still being collected.",
+                    "timing": "Next 1 hour"
+                }
+            ],
             "sensor_values": {},
-            "ai_reasoning_text": "Could not generate AI advisory at this time. Please check your sensor connection.",
+            "ai_reasoning_text": f"Error generating advisory: {str(e)}. Please ensure your Gemini API key is valid and sensors are sending data.",
             "logic_metrics": {"et0": 0, "etc": 0, "kc": 0},
             "irrigation_shap": {},
             "pest_shap": {}
@@ -226,6 +234,7 @@ async def get_ai_recommendations(
     advisory = {
         "advisory_id": advisory_id,
         "field_id": field_id,
+        "field_name": field.name,
         "date": datetime.datetime.now().isoformat(),
         "recommendations": [
             {
