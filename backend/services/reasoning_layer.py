@@ -32,7 +32,7 @@ import google.generativeai as genai
 # Get API key from environment variable
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA" # Fallback to key from ALL MODELS for now
 genai.configure(api_key=GEMINI_API_KEY)
-llm_model = genai.GenerativeModel('models/gemini-flash-latest')
+llm_model = genai.GenerativeModel('gemini-1.5-flash')
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)

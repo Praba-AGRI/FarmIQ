@@ -15,6 +15,7 @@ from routes.advisories import get_advisory_history
 from services.storage import load_json, save_json, get_recent_readings
 from services.ai_pipeline_service import ai_pipeline
 from services.irrigation_logic import irrigation_recommendation
+from services.reasoning_layer import reasoning_agri_assistant
 from utils.field_validation import get_field_or_404
 import datetime
 import numpy as np
