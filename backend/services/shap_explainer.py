@@ -33,7 +33,9 @@ class XAIExplainer:
             return {"Soil Moisture": 0.45, "Humidity": 0.21, "ETc": 0.15}
             
         try:
-            shap_values = self.lstm_explainer.shap_values(input_data)
+            # Ensure input is a pure NumPy float32 array to avoid Keras UserWarnings
+            clean_input = np.array(input_data, dtype=np.float32)
+            shap_values = self.lstm_explainer.shap_values(clean_input)
             
             # Handle different SHAP output formats (list vs array)
             if isinstance(shap_values, list):

@@ -3,10 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 
-from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market
-
-# Load environment variables
+# Load environment variables FIRST to ensure they are available for singletons
 load_dotenv()
+
+from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market
 
 # Initialize FastAPI app
 app = FastAPI(
