@@ -218,8 +218,8 @@ async def get_ai_recommendations(
     field_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    # Verify field belongs to user
-    get_field_or_404(field_id, current_user["user_id"])
+    # Verify field belongs to user AND get field object for advisory saving
+    field = get_field_or_404(field_id, current_user["user_id"])
     
     # Get combined output from our new pipeline
     ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
