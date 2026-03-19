@@ -1,0 +1,22 @@
+{
+  "fields": [
+    {
+      "field_id": "ac43c0c7-4d3b-4db7-9f15-24f0a0045a76",
+      "farmer_id": "aa48164d-df6f-4c9e-876f-f8c9734e2a13",
+      "name": "Praba",
+      "crop": "wheat",
+      "sowing_date": "2026-01-01",
+      "area_acres": 4.5,
+      "sensor_node_id": "tonystark"
+    },
+    {
+      "field_id": "fc188608-def5-4654-97c1-f75fafb95645",
+      "farmer_id": "aa48164d-df6f-4c9e-876f-f8c9734e2a13",
+      "name": "Monish",
+      "crop": "rice",
+      "sowing_date": "2026-01-07",
+      "area_acres": 5.59,
+      "sensor_node_id": "Monish_rgv"
+    }
+  ]
+}
