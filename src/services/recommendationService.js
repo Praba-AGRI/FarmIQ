@@ -8,6 +8,14 @@ export const recommendationService = {
     }
     return api.post(url);
   },
+  
+  generateAdvisory: async (fieldId, lat, lon) => {
+    let url = `/fields/${fieldId}/advisory/generate`;
+    if (lat !== undefined && lon !== undefined) {
+      url += `?lat=${lat}&lon=${lon}`;
+    }
+    return api.post(url);
+  },
 
   getTransparencyData: async (fieldId) => {
     // Placeholder API call

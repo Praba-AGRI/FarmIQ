@@ -20,7 +20,7 @@ from services.weather_service import (
 # Gemini configuration (New SDK)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA"
 client = genai.Client(api_key=GEMINI_API_KEY)
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-1.5-flash"
 
 
 async def generate_weather_summary(lat: float, lon: float) -> Dict[str, str]:

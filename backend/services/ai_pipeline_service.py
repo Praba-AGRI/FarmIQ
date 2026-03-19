@@ -54,7 +54,7 @@ class AIPipelineService:
         
         # Gemini Initialization (New SDK)
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA")
-        self.model_name = "gemini-2.0-flash" 
+        self.model_name = "gemini-1.5-flash" 
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:

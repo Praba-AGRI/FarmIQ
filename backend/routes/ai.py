@@ -25,7 +25,7 @@ import json
 
 router = APIRouter()
 
-async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None, lat: float = None, lon: float = None) -> dict:
+async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None, lat: float = None, lon: float = None, skip_llm: bool = False) -> dict:
     """
     Get AI agent output using original data from sensors and weather APIs.
     No mock data inside the pipeline.
@@ -145,7 +145,9 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         advisory_history_response = await get_advisory_history(field_id=field_id, current_user={"user_id": farmer_id_to_use})
         history_summaries = [rec.message for adv in advisory_history_response for rec in adv.recommendations][:5]
         
-        human_advisory = ai_pipeline.generate_human_advisory(raw_ml_data, history_summaries)
+        human_advisory = "Recommendation generated. Click 'Generate AI Smart Advisory' for a detailed bilingual plan."
+        if not skip_llm:
+            human_advisory = ai_pipeline.generate_human_advisory(raw_ml_data, history_summaries)
 
         # 5. Response Assembly
         recommendations = [
@@ -242,8 +244,8 @@ async def get_ai_recommendations(
     # Verify field belongs to user
     field = get_field_or_404(field_id, current_user["user_id"])
     
-    # Get combined output from our new pipeline with coordinates
-    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, lat, lon)
+    # Get combined output (Skip LLM by default to save rate limits)
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, lat, lon, skip_llm=True)
     
     recommendation_items = [RecommendationItem(**rec) for rec in ai_output["recommendations"]]
     
@@ -268,6 +270,49 @@ async def get_ai_recommendations(
         "human_advisory": ai_output.get("ai_reasoning_text", "No advisory available")
     }
     
+    advisories.append(advisory)
+    advisories_data["advisories"] = advisories
+    save_json("advisories.json", advisories_data)
+    
+    return AIRecommendationResponse(
+        crop_stage=ai_output["crop_stage"],
+        gdd_value=ai_output["gdd_value"],
+        recommendations=recommendation_items,
+        ai_reasoning_text=ai_output.get("ai_reasoning_text", "Click 'Generate' for AI Advisory")
+    )
+
+@router.post("/{field_id}/advisory/generate", response_model=AIRecommendationResponse)
+async def generate_manual_advisory(
+    field_id: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Manually trigger the Gemini LLM to generate a human-readable advisory.
+    Saves rate limits by only calling when the farmer explicitly requests it.
+    """
+    field = get_field_or_404(field_id, current_user["user_id"])
+    
+    # Get output WITH LLM advisory
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, lat, lon, skip_llm=False)
+    
+    recommendation_items = [RecommendationItem(**rec) for rec in ai_output["recommendations"]]
+    
+    # Save to history
+    advisories_data = load_json("advisories.json")
+    advisories = advisories_data.get("advisories", [])
+    advisory = {
+        "advisory_id": str(uuid.uuid4()),
+        "field_id": field_id,
+        "field_name": field.name,
+        "date": datetime.datetime.now().isoformat(),
+        "recommendations": [
+            {"type": rec["title"].lower().replace(" ", "_"), "status": rec["status"], "message": rec["description"]}
+            for rec in ai_output["recommendations"]
+        ],
+        "human_advisory": ai_output.get("ai_reasoning_text", "No advisory available")
+    }
     advisories.append(advisory)
     advisories_data["advisories"] = advisories
     save_json("advisories.json", advisories_data)

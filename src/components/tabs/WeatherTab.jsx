@@ -12,6 +12,7 @@ const WeatherTab = ({ fieldId, location, demoMode = false }) => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   useEffect(() => {
     if (demoMode) {
@@ -142,15 +143,15 @@ const WeatherTab = ({ fieldId, location, demoMode = false }) => {
     );
   };
 
-  const fetchWeatherData = async (latitude, longitude) => {
+  const fetchWeatherData = async (latitude, longitude, skipAi = true) => {
     try {
-      setLoading(true);
+      if (skipAi) setLoading(true); // Only show full loader on initial fetch
       setError('');
       
       // Fetch live weather, summary, and alerts in parallel
       const [liveRes, summaryRes, alertsRes] = await Promise.all([
         weatherService.getLiveWeather(latitude, longitude),
-        weatherService.getWeatherSummary(latitude, longitude),
+        weatherService.getWeatherSummary(latitude, longitude, skipAi),
         weatherService.getWeatherAlerts(latitude, longitude)
       ]);
       
@@ -195,7 +196,22 @@ const WeatherTab = ({ fieldId, location, demoMode = false }) => {
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to load weather data';
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      if (skipAi) setLoading(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    try {
+      setGeneratingSummary(true);
+      // Get current position again or use from weather if available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          await fetchWeatherData(pos.coords.latitude, pos.coords.longitude, false);
+          setGeneratingSummary(false);
+        }, () => setGeneratingSummary(false));
+      }
+    } catch (e) {
+      setGeneratingSummary(false);
     }
   };
 
@@ -207,7 +223,15 @@ const WeatherTab = ({ fieldId, location, demoMode = false }) => {
     return <ErrorMessage message={error} onRetry={getLocationAndFetchWeather} />;
   }
 
-  return <WeatherCard weather={weather} summary={summary} alerts={alerts} />;
+  return (
+    <WeatherCard 
+      weather={weather} 
+      summary={summary} 
+      alerts={alerts} 
+      onGenerateSummary={handleGenerateSummary}
+      generatingSummary={generatingSummary}
+    />
+  );
 };
 
 export default WeatherTab;

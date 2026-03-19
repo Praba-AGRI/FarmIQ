@@ -155,13 +155,15 @@ async def get_weather_history(
 @router.get("/summary", response_model=WeatherSummaryResponse)
 async def get_weather_summary(
     lat: float = Query(..., description="Latitude", ge=-90, le=90),
-    lon: float = Query(..., description="Longitude", ge=-180, le=180)
+    lon: float = Query(..., description="Longitude", ge=-180, le=180),
+    skip_ai: bool = Query(False, description="If True, skips AI generation and returns placeholders")
 ):
     """
     Get AI-generated weather summary for today and tomorrow.
     
     - **lat**: Latitude (-90 to 90)
     - **lon**: Longitude (-180 to 180)
+    - **skip_ai**: Optional toggle to save rate limits
     - Returns farmer-friendly summaries for today and tomorrow
     - Used for dashboard text cards and multilingual support
     - Cached for 10 minutes
@@ -171,10 +173,11 @@ async def get_weather_summary(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
     
-    # Check cache
-    cached_data = weather_cache.get("summary", lat, lon)
-    if cached_data:
-        return WeatherSummaryResponse(**cached_data)
+    # Check cache (only for non-placeholder requests)
+    if not skip_ai:
+        cached_data = weather_cache.get("summary", lat, lon)
+        if cached_data:
+            return WeatherSummaryResponse(**cached_data)
     
     try:
         # Get location name from live weather
@@ -182,6 +185,13 @@ async def get_weather_summary(
         transformed = transform_onecall_response(weather_data)
         location = transformed["location"]
         
+        if skip_ai:
+            return WeatherSummaryResponse(
+                summary_today="Climate summary ready. Click 'Generate' to see today's AI insights.",
+                summary_tomorrow="Click 'Generate' for tomorrow's AI weather outlook.",
+                location=location
+            )
+
         # Generate AI summary
         summary_data = await generate_weather_summary(lat, lon)
         

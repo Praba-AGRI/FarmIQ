@@ -40,11 +40,12 @@ export const weatherService = {
    * @param {number} longitude - Longitude coordinate
    * @returns {Promise} API response with summary_today and summary_tomorrow
    */
-  getWeatherSummary: async (latitude, longitude) => {
+  getWeatherSummary: async (latitude, longitude, skipAi = false) => {
     return api.get('/weather/summary', {
       params: {
         lat: latitude,
-        lon: longitude
+        lon: longitude,
+        skip_ai: skipAi
       }
     });
   },
