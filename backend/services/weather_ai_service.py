@@ -8,21 +8,19 @@ Provides AI-powered explanations and Q&A for weather-related questions.
 import os
 import json
 from typing import Dict, Optional
-import os
-import json
 import asyncio
 from typing import Dict, Optional
-import google.generativeai as genai
+from google import genai
 from services.reasoning_layer import SYSTEM_PROMPT
 from services.weather_service import (
     get_onecall_weather, transform_onecall_response, 
     get_weather_overview
 )
 
-# Gemini configuration
+# Gemini configuration (New SDK)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA"
-genai.configure(api_key=GEMINI_API_KEY)
-llm_model = genai.GenerativeModel('models/gemini-flash-latest')
+client = genai.Client(api_key=GEMINI_API_KEY)
+MODEL_NAME = "gemini-2.0-flash"
 
 
 async def generate_weather_summary(lat: float, lon: float) -> Dict[str, str]:
@@ -204,7 +202,11 @@ async def answer_weather_question(question: str, lat: float, lon: float) -> Dict
         Keep the answer concise (2-4 sentences) but comprehensive.
         """
         
-        response = await asyncio.to_thread(llm_model.generate_content, prompt)
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model=MODEL_NAME,
+            contents=prompt
+        )
         answer = response.text
         
         return {
