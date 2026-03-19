@@ -12,6 +12,9 @@ from routes.sensors import get_current_sensor_readings
 # Note: Weather endpoints now require lat/lon coordinates
 # TODO: Update to use geolocation or new weather endpoints when location strings can be converted to coordinates
 from routes.advisories import get_advisory_history
+from services.storage import load_json, save_json, get_recent_readings
+from services.ai_pipeline_service import ai_pipeline
+from services.irrigation_logic import irrigation_recommendation
 from services.reasoning_layer import reasoning_agri_assistant
 from services.weather_service import get_onecall_weather, transform_onecall_response
 from utils.field_validation import get_field_or_404
