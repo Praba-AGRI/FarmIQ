@@ -8,7 +8,7 @@ from pathlib import Path
 from services.models.spraying_rules import SprayingDecisionEngine
 from services.market_integration import MarketIntegrationModule
 from services.shap_explainer import XAIExplainer
-import google.generativeai as genai
+from google import genai
 
 # Handle cross-version Keras saved model issues
 try:
@@ -52,13 +52,9 @@ class AIPipelineService:
             background_data_lstm=background_data_lstm
         )
         
-        # Gemini Initialization
-        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA"
-        genai.configure(api_key=GEMINI_API_KEY)
-        
-        # Try to find an available model
-        self.model_name = "gemini-1.5-flash" # Default
-        self.llm_model = genai.GenerativeModel(self.model_name)
+        # Gemini Initialization (New SDK)
+        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA")
+        self.model_name = "gemini-2.0-flash" 
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:
@@ -169,18 +165,14 @@ class AIPipelineService:
         4. Provide the complete response first in English, and then provide a perfectly translated version in natural Tamil.
         """
         
-        # Iterative fallback for model names
-        model_names = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
-        for m_name in model_names:
-            try:
-                model = genai.GenerativeModel(m_name)
-                response = model.generate_content(system_prompt)
-                return response.text
-            except Exception as e:
-                # If it's a 404/not found, try the next model in the list
-                if "404" in str(e) or "not found" in str(e).lower():
-                    continue
-                print(f"LLM Error ({m_name}): {e}")
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=system_prompt,
+            )
+            return response.text
+        except Exception as e:
+            print(f"LLM Error ({self.model_name}): {e}")
                 
         return "Advisory generation failed. Please check system logs."
 

@@ -24,15 +24,15 @@ import json
 import os
 from datetime import datetime
 from typing import List, Dict, Optional
-import google.generativeai as genai
+from google import genai
 
 # -------------------------------------------------
 # Gemini Configuration
 # -------------------------------------------------
 # Get API key from environment variable
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA" # Fallback to key from ALL MODELS for now
-genai.configure(api_key=GEMINI_API_KEY)
-llm_model = genai.GenerativeModel('gemini-1.5-flash')
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA" 
+client = genai.Client(api_key=GEMINI_API_KEY)
+MODEL_NAME = "gemini-2.0-flash"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -159,22 +159,20 @@ async def reasoning_agri_assistant(
         Please provide the advisory or answer the question based on the above context.
         """
 
-        for m_name in model_names:
-            try:
-                model = genai.GenerativeModel(m_name)
-                response = await asyncio.to_thread(model.generate_content, prompt)
-                if response and hasattr(response, 'text') and response.text:
-                    return str(response.text)
-                continue # Try next if text is empty
-            except Exception as e:
-                if "404" in str(e) or "not found" in str(e).lower():
-                    continue # Try next model
-                raise e # Re-raise if it's not a 404
-
+        # Use new SDK client
+        try:
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=MODEL_NAME,
+                contents=prompt
+            )
+            if response and hasattr(response, 'text') and response.text:
+                return str(response.text)
+        except Exception as e:
+            print(f"Gemini reasoning error on {MODEL_NAME}: {e}")
+            
         return "Advisory reasoning currently unavailable. Please check your Gemini API configuration."
 
     except Exception as e:
         print(f"Gemini reasoning error: {e}")
-        return f"Advisory reasoning unavailable. (Technical error: {type(e).__name__})"
-
 
