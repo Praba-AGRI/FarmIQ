@@ -120,9 +120,6 @@ async def reasoning_agri_assistant(
     Output:
     - Human-readable advisory / answer
     """
-    # Iterative fallback for model names
-    model_names = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
-    
     try:
         # Build controlled memory
         memory_context = build_memory_context(advisory_history)
