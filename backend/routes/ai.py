@@ -198,102 +198,10 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "gdd_value": 0.0,
             "recommendations": [],
             "sensor_values": {},
-            "human_advisory": "Could not generate advisory at this time.",
-            "logic_metrics": {"et0": 0, "etc": 0, "kc": 0}
-        }
-        
-        recommendations.append({
-            "title": "Nutrients",
-            "description": "Apply nitrogen fertilizer at recommended dosage.",
-            "status": RecommendationStatus.WAIT,
-            "explanation": "Crop is in vegetative stage. Wait for 2 days after irrigation before applying fertilizer.",
-            "timing": "After 2 days"
-        })
-        
-        # Pest Management Recommendation with ML-style predictions
-        pest_risk_score = 0
-        pest_factors = []
-        
-        # Environmental risk factors for pests
-        if sensor_data["air_humidity"] > 70:
-            pest_risk_score += 40
-            pest_factors.append(f"High humidity ({sensor_data['air_humidity']}%)")
-        elif sensor_data["air_humidity"] > 60:
-            pest_risk_score += 25
-            pest_factors.append(f"Moderate humidity ({sensor_data['air_humidity']}%)")
-        
-        temp_optimal_for_pests = 25 <= sensor_data["air_temp"] <= 32
-        if temp_optimal_for_pests:
-            pest_risk_score += 30
-            pest_factors.append(f"Optimal temperature for pests ({sensor_data['air_temp']}°C)")
-        
-        # Add rainfall influence if available
-        if weather_data.get("rainfall_last_3d", 0) > 10:
-            pest_risk_score += 20
-            pest_factors.append("Recent rainfall increases risk")
-        
-        # Normalize score to 0-100 and calculate confidence
-        pest_risk_score = min(pest_risk_score, 100)
-        pest_confidence = min(75 + len(pest_factors) * 5, 95)  # Higher confidence with more factors
-        
-        # Determine pest status and description
-        if pest_risk_score >= 60:
-            pest_status = RecommendationStatus.DO_NOW
-            pest_description = "High pest risk detected. Immediate monitoring and preventive action recommended."
-            pest_action = "Apply recommended pest control measures"
-        elif pest_risk_score >= 30:
-            pest_status = RecommendationStatus.MONITOR
-            pest_description = "Moderate pest risk. Increase monitoring frequency."
-            pest_action = "Monitor daily for pest activity"
-        else:
-            pest_status = RecommendationStatus.WAIT
-            pest_description = "Low pest risk. Continue regular monitoring."
-            pest_action = "Continue routine monitoring"
-        
-        # Build explanation
-        pest_explanation = f"Pest risk assessment based on: {', '.join(pest_factors)}. Environmental conditions are {'favorable' if pest_risk_score >= 60 else 'moderately favorable' if pest_risk_score >= 30 else 'not favorable'} for pest activity."
-        
-        recommendations.append({
-            "title": "Pest Management",
-            "description": pest_description,
-            "status": pest_status,
-            "explanation": pest_explanation,
-            "timing": "Immediate" if pest_risk_score >= 60 else "Daily monitoring" if pest_risk_score >= 30 else "Weekly monitoring",
-            "ml_data": {
-                "risk_level": round(pest_risk_score, 1),
-                "confidence": round(pest_confidence, 1)
-            }
-        })
-        
-        return {
-            "crop_stage": estimated_stage if estimated_stage != "unknown" else crop_stage,
-            "gdd_value": calculated_gdd,
-            "recommendations": recommendations,
-            "sensor_values": sensor_data
-        }
-    except Exception as e:
-        # Return default mock data if sensor data unavailable
-        return {
-            "crop_stage": "Vegetative",
-            "gdd_value": 1250.0,
-            "recommendations": [
-                {
-                    "title": "Irrigation",
-                    "description": "Monitor soil moisture levels",
-                    "status": RecommendationStatus.MONITOR,
-                    "explanation": "Regular monitoring recommended",
-                    "timing": "Daily",
-                    "ml_data": {
-                        "amount_mm": 0,
-                        "confidence": 50,
-                        "et0": 0,
-                        "kc": 1,
-                        "etc": 0,
-                        "gdd": 0
-                    }
-                }
-            ],
-            "sensor_values": {}
+            "ai_reasoning_text": "Could not generate AI advisory at this time. Please check your sensor connection.",
+            "logic_metrics": {"et0": 0, "etc": 0, "kc": 0},
+            "irrigation_shap": {},
+            "pest_shap": {}
         }
 
 
@@ -318,7 +226,7 @@ async def get_ai_recommendations(
     advisory = {
         "advisory_id": advisory_id,
         "field_id": field_id,
-        "date": get_timestamp(),
+        "date": datetime.datetime.now().isoformat(),
         "recommendations": [
             {
                 "type": rec["title"].lower().replace(" ", "_"),
@@ -327,7 +235,7 @@ async def get_ai_recommendations(
             }
             for rec in ai_output["recommendations"]
         ],
-        "human_advisory": ai_output["human_advisory"]
+        "human_advisory": ai_output.get("ai_reasoning_text", "No advisory available")
     }
     
     advisories.append(advisory)
@@ -338,7 +246,7 @@ async def get_ai_recommendations(
         crop_stage=ai_output["crop_stage"],
         gdd_value=ai_output["gdd_value"],
         recommendations=recommendation_items,
-        ai_reasoning_text=ai_output["human_advisory"]
+        ai_reasoning_text=ai_output.get("ai_reasoning_text", "No advisory available")
     )
 
 
