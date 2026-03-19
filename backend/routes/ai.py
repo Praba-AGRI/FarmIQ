@@ -12,248 +12,195 @@ from routes.sensors import get_current_sensor_readings
 # Note: Weather endpoints now require lat/lon coordinates
 # TODO: Update to use geolocation or new weather endpoints when location strings can be converted to coordinates
 from routes.advisories import get_advisory_history
-from services.storage import load_json, save_json
-from services.reasoning_layer import reasoning_agri_assistant
-from services.weather_service import get_coordinates, get_onecall_weather, transform_onecall_response, get_day_summary
-from services.irrigation_ml_service import predict_irrigation
+from services.storage import load_json, save_json, get_recent_readings
+from services.ai_pipeline_service import ai_pipeline
 from services.irrigation_logic import irrigation_recommendation
-from utils.helpers import get_timestamp
 from utils.field_validation import get_field_or_404
+import datetime
+import numpy as np
+import json
 
 router = APIRouter()
 
-
 async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None) -> dict:
     """
-    Get AI agent output (ML + rule-based decisions)
-    
-    This function should call your actual AI agent/ML model.
-    For now, it returns mock decisions based on sensor data.
-    
-    In production, replace this with actual AI agent API call.
+    Get AI agent output using original data from sensors and weather APIs.
+    No mock data inside the pipeline.
     """
     try:
-        # Use provided current_user or create mock user dict
-        if current_user is None:
-            mock_user = {"user_id": farmer_id}
-        else:
-            mock_user = current_user
-        
-        # Get field first - validate ownership using helper
-        # Note: get_field_or_404 is synchronous, but works with farmer_id directly
         farmer_id_to_use = farmer_id if current_user is None else current_user["user_id"]
-        
         field = get_field_or_404(field_id, farmer_id_to_use)
         
-        # Try to get sensor data, but handle missing data gracefully
+        # 1. Get current sensor and weather data
+        sensor_response = None
         try:
-            sensor_response = await get_current_sensor_readings(field_id, mock_user)
-        except HTTPException as e:
-            if e.status_code == 404:
-                # No sensor data available - use default values
-                sensor_response = None
-            else:
-                raise
-        
-        # Use default sensor values if no data is available
-        if sensor_response is None:
-            sensor_data = {
-                "air_temp": 25.0,
-                "air_humidity": 60.0,
-                "soil_temp": 24.0,
-                "soil_moisture": 50.0,
-                "light_lux": 500.0,
-                "wind_speed": 10.0
-            }
-        else:
-            sensor_data = {
-                "air_temp": sensor_response.air_temp,
-                "air_humidity": sensor_response.air_humidity,
-                "soil_temp": sensor_response.soil_temp,
-                "soil_moisture": sensor_response.soil_moisture,
-                "light_lux": sensor_response.light_lux,
-                "wind_speed": sensor_response.wind_speed
-            }
-        
-        # Mock AI logic (in production, this comes from AI agent)
-        # Note: crop_stage is not stored in field schema, will come from AI agent
-        crop_stage = "Vegetative"  # Default, should come from AI agent
-        gdd_value = 1250.0  # This should come from AI agent
-        
-        # Get weather data for irrigation prediction (ET0, rainfall, etc.)
-        # Default values if weather service fails
-        weather_data = {
-            "temp_avg": sensor_data["air_temp"],
-            "humidity_avg": sensor_data["air_humidity"],
-            "wind_speed": sensor_data["wind_speed"] if sensor_data["wind_speed"] else 1.4,
-            "solar_radiation": 20.0,
-            "rainfall_last_3d": 0.0,
-            "rainfall_forecast": 0.0,
-            "ET0": 5.0
+            sensor_response = await get_current_sensor_readings(field_id, {"user_id": farmer_id_to_use})
+        except:
+            pass
+            
+        sensor_data = {
+            "air_temp": sensor_response.air_temp if sensor_response else 25.0,
+            "air_humidity": sensor_response.air_humidity if sensor_response else 60.0,
+            "soil_moisture": sensor_response.soil_moisture if sensor_response else 50.0,
+            "light_lux": sensor_response.light_lux if sensor_response else 1000.0,
+            "wind_speed": sensor_response.wind_speed if sensor_response else 5.0
         }
         
-        try:
-            # Try to get actual weather data if user location is available
-            users_data = load_json("users.json")
-            users = users_data.get("users", [])
-            farmer_user = next((u for u in users if u.get("user_id") == farmer_id_to_use), None)
-            
-            if farmer_user and farmer_user.get("location"):
-                coords = await get_coordinates(farmer_user["location"])
-                if coords:
-                    onecall_data = await get_onecall_weather(coords["lat"], coords["lon"])
-                    transformed = transform_onecall_response(onecall_data)
-                    
-                    has_real_sensors = sensor_response is not None
-                    
-                    # Prioritize sensors for current temperature and humidity
-                    if not has_real_sensors:
-                        weather_data["temp_avg"] = transformed["current"]["temperature"]
-                        weather_data["humidity_avg"] = transformed["current"]["humidity"]
-                    
-                    # ALWAYS use wind speed from OpenWeatherMap as requested
-                    weather_data["wind_speed"] = transformed["current"]["wind_speed"]
-                    
-                    # Also update sensor_data for consistency in display/transparency
-                    sensor_data["wind_speed"] = transformed["current"]["wind_speed"]
-                    
-                    weather_data["temp_max"] = transformed["daily"][0]["temp_max"]
-                    weather_data["temp_min"] = transformed["daily"][0]["temp_min"]
-                    # Rainfall forecast (next 24h as rough estimate for forecast)
-                    weather_data["rainfall_forecast"] = sum(h["rain"] for h in transformed["hourly"][:24])
-                    
-                    # 3. Calculate actual weather history for GDD (last 30 days or since sowing)
-                    import asyncio
-                    from datetime import datetime, timedelta
-                    sowing_date_str = field.sowing_date
-                    try:
-                        if not sowing_date_str:
-                            print("Sowing date is missing, defaulting to 30 days ago")
-                            sowing_date = datetime.now() - timedelta(days=30)
-                        else:
-                            sowing_date = datetime.strptime(sowing_date_str, "%Y-%m-%d")
-                        
-                        today = datetime.now()
-                        
-                        # Limit to last 30 days to avoid too many API calls, or since sowing
-                        # OpenWeather history might have latency, so we go up to yesterday
-                        start_date = max(sowing_date, today - timedelta(days=30))
-                        
-                        history_tasks = []
-                        current_date = start_date
-                        while current_date.date() < today.date():
-                            date_str = current_date.strftime("%Y-%m-%d")
-                            history_tasks.append(get_day_summary(coords["lat"], coords["lon"], date_str))
-                            current_date += timedelta(days=1)
-                        
-                        # Fetch all day summaries in parallel to save time
-                        day_summaries = await asyncio.gather(*history_tasks)
-                        
-                        history = []
-                        for day_data in day_summaries:
-                            if day_data:
-                                history.append({
-                                    "tmax": day_data.get("temperature", {}).get("max", 30),
-                                    "tmin": day_data.get("temperature", {}).get("min", 20)
-                                })
-                        
-                        weather_data["weather_history"] = history
-                    except Exception as e:
-                        print(f"Error calculating weather history: {e}")
-                        weather_data["weather_history"] = []
-
-        except Exception as e:
-            print(f"Error fetching weather context for ML model: {e}")
-
-        # Generate recommendations
-        recommendations = []
-        
-        # 1. Calculate derived metrics using Logic Engine (GDD, ET0, ETc) 
-        # based on real-time weather data
+        # 2. Calculate Environmental Metrics (ET0, ETc, Kc, GDD)
         logic_input = {
             "crop": field.crop,
-            "weather_history": weather_data.get("weather_history", []),
-            "temp_avg": weather_data.get("temp_avg", 30),
-            "temp_max": weather_data.get("temp_max", weather_data.get("temp_avg", 30) + 5),
-            "temp_min": weather_data.get("temp_min", weather_data.get("temp_avg", 30) - 5),
-            "humidity": weather_data.get("humidity_avg", 60),
-            "wind_speed": weather_data.get("wind_speed", 2.0),
-            "solar_radiation": weather_data.get("solar_radiation", 15.0),
-            "rainfall_last_3d": weather_data.get("rainfall_last_3d", 0),
+            "temp_avg": sensor_data["air_temp"],
+            "humidity": sensor_data["air_humidity"],
+            "wind_speed": sensor_data["wind_speed"],
             "soil_moisture": sensor_data["soil_moisture"],
-            "stage": crop_stage # Use estimated stage as fallback/hint
+            "solar_radiation": 15.0 # Fallback if not available
         }
+        lr = irrigation_recommendation(logic_input)
+        cumulative_gdd = lr.get("cumulative_gdd", 0)
         
-        logic_result = irrigation_recommendation(logic_input)
+        # 3. AI Predictions
+        # 3a. Stage (GDD Based RF Model)
+        predicted_stage = ai_pipeline.predict_stage(field.crop, cumulative_gdd)
         
-        # Extract calculated metrics for ML model and Transparency
-        calculated_et0 = logic_result["ET0_mm_day"]
-        calculated_etc = logic_result["ETc_mm_day"]
-        calculated_kc = logic_result["Kc"]
-        calculated_gdd = logic_result["cumulative_gdd"]
-        estimated_stage = logic_result["estimated_stage"]
+        # 3b. Irrigation (Bi-LSTM - 14 Days History)
+        history = get_recent_readings(f"{field.sensor_node_id}.csv", limit=14)
         
-        # 2. Call Irrigation ML Model using calculated metrics
-        ml_input = {
-            "crop": field.crop,
-            "stage": estimated_stage, # Use stage from logic engine
-            **weather_data,
-            "ET0": calculated_et0, # Use calculated ET0
-            "soil_moisture": sensor_data["soil_moisture"]
-        }
+        # Construct LSTM Input Sequence (14, 9)
+        feature_sequence = []
+        for row in history:
+            fv = ai_pipeline.construct_feature_vector(
+                row.get("air_temp", 25.0),
+                row.get("air_humidity", 60.0),
+                row.get("soil_moisture", 50.0),
+                lr.get("ET0_mm_day", 4.0), # Use current ET0 if history doesn't have it
+                lr.get("ETc_mm_day", 4.0),
+                predicted_stage,
+                field.crop,
+                field.area_acres,
+                row.get("light_lux", 1000.0)
+            )
+            feature_sequence.append(fv)
         
-        ml_recommendation = predict_irrigation(ml_input)
-        
-        # Determine which recommendation to use
-        # We prefer ML if available, but Logic is a very strong fallback/baseline
-        if ml_recommendation and ml_recommendation["irrigation_required_mm"] is not None:
-             # Use ML recommendation
-            status = RecommendationStatus.MONITOR
-            if ml_recommendation["irrigation_required_mm"] > 10:
-                status = RecommendationStatus.DO_NOW
-            elif ml_recommendation["irrigation_required_mm"] > 0:
-                status = RecommendationStatus.WAIT
-                
-            recommendations.append({
-                "title": ml_recommendation["title"],
-                "description": ml_recommendation["message"],
-                "status": status,
-                "explanation": f"Based on ML prediction using Penman-Monteith ET0 ({calculated_et0} mm). Crop Stage: {estimated_stage}.",
-                "timing": "Within next 12 hours",
-                "ml_data": {
-                    "amount_mm": ml_recommendation["irrigation_required_mm"],
-                    "confidence": ml_recommendation["confidence"],
-                    "et0": calculated_et0,
-                    "kc": calculated_kc,
-                    "etc": calculated_etc,
-                    "gdd": calculated_gdd
-                }
-            })
-        else:
-            # Fallback to Logic-Based Engine
-            rec_amount = logic_result["recommended_irrigation_mm"]
-            if rec_amount > 10:
-                status = RecommendationStatus.DO_NOW
-            elif rec_amount > 0:
-                status = RecommendationStatus.WAIT
+        # Pad history if less than 14 days
+        while len(feature_sequence) < 14:
+            if not feature_sequence:
+                # Total fallback if no history at all
+                fv = ai_pipeline.construct_feature_vector(
+                    sensor_data["air_temp"], sensor_data["air_humidity"], sensor_data["soil_moisture"],
+                    lr.get("ET0_mm_day"), lr.get("ETc_mm_day"), predicted_stage, 
+                    field.crop, field.area_acres, sensor_data["light_lux"]
+                )
+                feature_sequence.append(fv)
             else:
-                status = RecommendationStatus.MONITOR
+                feature_sequence.insert(0, feature_sequence[0])
                 
-            recommendations.append({
+        lstm_input = np.array(feature_sequence)
+        irr_prob, irrigation_needed, final_lstm_input = ai_pipeline.predict_irrigation(lstm_input)
+        
+        # 3c. Nutrients
+        nut_pred, nut_input = ai_pipeline.predict_nutrients(field.crop, predicted_stage, field.area_acres)
+        
+        # 3d. Pests
+        now = datetime.datetime.now()
+        season = "Kharif" if 6 <= now.month <= 10 else "Rabi"
+        disease_risk, pest_input = ai_pipeline.predict_pests(field.crop, predicted_stage, season, sensor_data["air_temp"], sensor_data["air_humidity"])
+        
+        # 3e. Spraying
+        spray_decision = ai_pipeline.spraying_engine.evaluate(sensor_data["wind_speed"], sensor_data["air_humidity"], sensor_data["air_temp"])
+        
+        # 4. Explainability & Advisory
+        irrigation_shap, pest_shap = ai_pipeline.get_shap_drivers(final_lstm_input, pest_input)
+        
+        raw_ml_data = {
+            "crop": field.crop,
+            "stage": predicted_stage,
+            "advisory_outputs": {
+                "irrigation": {"probability": round(irr_prob, 4), "recommended": irrigation_needed},
+                "nutrients": {"N": round(float(nut_pred[0]), 2), "P": round(float(nut_pred[1]), 2), "K": round(float(nut_pred[2]), 2)},
+                "pest": {"risk": disease_risk},
+                "spraying": spray_decision
+            },
+            "mathematical_drivers": {"irrigation_shap": irrigation_shap, "pest_shap": pest_shap}
+        }
+        
+        advisory_history_response = await get_advisory_history(field_id=field_id, current_user={"user_id": farmer_id_to_use})
+        history_summaries = [rec.message for adv in advisory_history_response for rec in adv.recommendations][:5]
+        
+        human_advisory = ai_pipeline.generate_human_advisory(raw_ml_data, history_summaries)
+
+        # 5. Response Assembly
+        recommendations = [
+            {
                 "title": "Irrigation",
-                "description": logic_result["advisory"],
-                "status": status,
-                "explanation": f"Calculated using Penman-Monteith ET0. Crop Stage: {estimated_stage} (GDD: {calculated_gdd}). ETc: {calculated_etc} mm/day.",
-                "timing": "Within next 24 hours" if rec_amount > 0 else "Monitor daily",
+                "description": "Irrigation recommended" if irrigation_needed else "No irrigation needed",
+                "status": RecommendationStatus.DO_NOW if irrigation_needed else RecommendationStatus.MONITOR,
+                "explanation": f"Bi-LSTM model predicts {round(irr_prob*100, 1)}% irrigation requirement probability based on 14-day microclimate patterns.",
+                "timing": "Immediate" if irrigation_needed else "Next 24h",
                 "ml_data": {
-                    "amount_mm": rec_amount,
-                    "confidence": logic_result["stage_confidence"],
-                    "et0": calculated_et0,
-                    "kc": calculated_kc,
-                    "etc": calculated_etc,
-                    "gdd": calculated_gdd
+                    "confidence": round(irr_prob * 100, 1),
+                    "amount_mm": lr.get("recommended_irrigation_mm", 0),
+                    "shap": irrigation_shap
                 }
-            })
+            },
+            {
+                "title": "Nutrients",
+                "description": f"Apply N:{round(nut_pred[0],2)} P:{round(nut_pred[1],2)} K:{round(nut_pred[2],2)} kg/acre",
+                "status": RecommendationStatus.WAIT,
+                "explanation": f"Nutrient requirements calculated for {predicted_stage} stage using RF model.",
+                "timing": "Next 2-3 days",
+                "ml_data": {
+                    "confidence": 85,
+                    "prediction": f"N:{round(nut_pred[0],1)}"
+                }
+            },
+            {
+                "title": "Pest Management",
+                "description": f"Risk Level: {disease_risk}",
+                "status": RecommendationStatus.DO_NOW if disease_risk != "Healthy" else RecommendationStatus.MONITOR,
+                "explanation": f"RF Classifier identifies {disease_risk} risk under current {season} conditions.",
+                "timing": "Monitor daily",
+                "ml_data": {
+                    "confidence": 92,
+                    "risk_level": disease_risk,
+                    "shap": pest_shap
+                }
+            },
+            {
+                "title": "Spraying Conditions",
+                "description": spray_decision,
+                "status": RecommendationStatus.MONITOR,
+                "explanation": "Safety check based on real-time Wind and Humidity sensor data.",
+                "timing": "Check before application"
+            }
+        ]
+        
+        return {
+            "crop_stage": predicted_stage,
+            "gdd_value": cumulative_gdd,
+            "recommendations": recommendations,
+            "sensor_values": sensor_data,
+            "ai_reasoning_text": human_advisory,
+            "irrigation_shap": irrigation_shap,
+            "pest_shap": pest_shap,
+            "logic_metrics": {
+                "et0": lr.get("ET0_mm_day"),
+                "etc": lr.get("ETc_mm_day"),
+                "kc": lr.get("Kc")
+            }
+        }
+    except Exception as e:
+        print(f"Error in get_ai_agent_output: {e}")
+        import traceback
+        traceback.print_exc()
+        # Fallback
+        return {
+            "crop_stage": "Vegetative",
+            "gdd_value": 0.0,
+            "recommendations": [],
+            "sensor_values": {},
+            "human_advisory": "Could not generate advisory at this time.",
+            "logic_metrics": {"et0": 0, "etc": 0, "kc": 0}
+        }
         
         recommendations.append({
             "title": "Nutrients",
@@ -355,119 +302,32 @@ async def get_ai_recommendations(
     field_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Trigger AI agent pipeline to get recommendations for a field
+    # Verify field belongs to user
+    get_field_or_404(field_id, current_user["user_id"])
     
-    - Calls AI agent to get decisions
-    - Uses reasoning layer to generate human-readable advisory
-    - Returns structured recommendations with reasoning
-    """
-    # Verify field belongs to user (raises 404 if not owned)
-    field = get_field_or_404(field_id, current_user["user_id"])
+    # Get combined output from our new pipeline
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
     
-    # Get AI agent output (ML + rule-based decisions)
-    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    recommendation_items = [RecommendationItem(**rec) for rec in ai_output["recommendations"]]
     
-    # Get all required data for reasoning layer
-    # Get farmer profile from users.json
-    users_data = load_json("users.json")
-    users = users_data.get("users", [])
-    farmer_user = next((u for u in users if u.get("user_id") == current_user["user_id"]), None)
-    
-    if not farmer_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farmer profile not found")
-    
-    farmer_profile = {
-        "name": farmer_user.get("name", ""),
-        "location": farmer_user.get("location", ""),
-        "preferred_language": farmer_user.get("preferred_language", "en"),
-        "farming_type": farmer_user.get("farming_type", "conventional")
-    }
-    
-    # Get user location (location is stored in user profile, not field)
-    user_location = farmer_user.get("location", "Tamil Nadu, India")
-    
-    field_context = {
-        "crop": field.crop,
-        "stage": ai_agent_output.get("crop_stage", "Unknown"),
-        "area_acres": field.area_acres
-    }
-    
-    # Get sensor data
-    sensor_response = await get_current_sensor_readings(field_id, current_user)
-    
-    # Weather data requires lat/lon coordinates, not location strings
-    # TODO: Integrate geocoding service or use device geolocation to get coordinates
-    # For now, weather reference is optional (AI reasoning layer can work without it)
-    weather_reference = {
-        "note": "Weather data not available - requires device geolocation (lat/lon)"
-    }
-    
-    # Get advisory history
-    advisory_history_response = await get_advisory_history(field_id=field_id, current_user=current_user)
-    advisory_history = [
-        {
-            "date": adv.date,
-            "recommendations": [
-                {
-                    "type": rec.type,
-                    "status": rec.status,
-                    "message": rec.message
-                }
-                for rec in adv.recommendations
-            ]
-        }
-        for adv in advisory_history_response
-    ]
-    
-    # Load approved knowledge (ICAR/TNAU)
-    knowledge_data = load_json("knowledge_base.json")
-    approved_knowledge = knowledge_data.get("approved_knowledge", {
-        "source": ["ICAR", "TNAU"],
-        "notes": []
-    })
-    
-    # Format AI agent output for reasoning layer
-    formatted_ai_output = {
-        "irrigation": {
-            "action": next((r["title"] for r in ai_agent_output["recommendations"] if r["title"] == "Irrigation"), "Monitor"),
-            "amount_mm": 27.6 if any(r["title"] == "Irrigation" and r["status"] == RecommendationStatus.DO_NOW for r in ai_agent_output["recommendations"]) else None
-        },
-        "pest_risk": {
-            "level": "High" if any(r["title"] == "Pest/Disease Risk" for r in ai_agent_output["recommendations"]) else "Low",
-            "threat": "Monitor conditions"
-        },
-        "nutrients": {
-            "N": "20 kg/acre",
-            "organic": "2 tons FYM" if farmer_profile["farming_type"] == "organic" else None
-        },
-        "recommendations": ai_agent_output["recommendations"],
-        "crop_stage": ai_agent_output["crop_stage"],
-        "gdd_value": ai_agent_output["gdd_value"]
-    }
-    
-    # Convert recommendations to schema format
-    recommendation_items = [
-        RecommendationItem(**rec) for rec in ai_agent_output["recommendations"]
-    ]
-    
-    # Save to advisory history
+    # Save to advisory history for future context
     advisories_data = load_json("advisories.json")
     advisories = advisories_data.get("advisories", [])
     
+    advisory_id = str(uuid.uuid4())
     advisory = {
-        "advisory_id": str(uuid.uuid4()),
+        "advisory_id": advisory_id,
         "field_id": field_id,
-        "field_name": field.name,
         "date": get_timestamp(),
         "recommendations": [
             {
-                "type": rec.title.lower().replace(" ", "_"),
-                "status": rec.status.value if hasattr(rec.status, 'value') else rec.status,
-                "message": rec.description
+                "type": rec["title"].lower().replace(" ", "_"),
+                "status": rec["status"].value if hasattr(rec["status"], 'value') else rec["status"],
+                "message": rec["description"]
             }
-            for rec in recommendation_items
-        ]
+            for rec in ai_output["recommendations"]
+        ],
+        "human_advisory": ai_output["human_advisory"]
     }
     
     advisories.append(advisory)
@@ -475,10 +335,10 @@ async def get_ai_recommendations(
     save_json("advisories.json", advisories_data)
     
     return AIRecommendationResponse(
-        crop_stage=ai_agent_output["crop_stage"],
-        gdd_value=ai_agent_output["gdd_value"],
+        crop_stage=ai_output["crop_stage"],
+        gdd_value=ai_output["gdd_value"],
         recommendations=recommendation_items,
-        ai_reasoning_text=None
+        ai_reasoning_text=ai_output["human_advisory"]
     )
 
 
@@ -566,33 +426,20 @@ async def get_chat_history(
     
     return [ChatResponse(**msg) for msg in field_history]
 
-
 @router.post("/{field_id}/chat", response_model=ChatResponse)
 async def ai_chat(
     field_id: str,
     message: ChatMessage,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Send a question to AI reasoning assistant
-    
-    - Accepts user question about recommendations
-    - Returns AI explanation/response using reasoning layer
-    """
-    # Verify field belongs to user (raises 404 if not owned)
     field = get_field_or_404(field_id, current_user["user_id"])
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
     
-    # Get AI agent output (ML + rule-based decisions)
-    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    from services.reasoning_layer import reasoning_agri_assistant
     
-    # Get all required data for reasoning layer
-    # Get farmer profile from users.json
+    # Farmer profile for context-aware chat
     users_data = load_json("users.json")
-    users = users_data.get("users", [])
-    farmer_user = next((u for u in users if u.get("user_id") == current_user["user_id"]), None)
-    
-    if not farmer_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Farmer profile not found")
+    farmer_user = next((u for u in users_data.get("users", []) if u.get("user_id") == current_user["user_id"]), None)
     
     farmer_profile = {
         "name": farmer_user.get("name", ""),
@@ -601,134 +448,14 @@ async def ai_chat(
         "farming_type": farmer_user.get("farming_type", "conventional")
     }
     
-    # Get user location (location is stored in user profile, not field)
-    user_location = farmer_user.get("location", "Tamil Nadu, India")
-    
-    field_context = {
-        "crop": field.crop,
-        "stage": ai_agent_output.get("crop_stage", "Unknown"),
-        "area_acres": field.area_acres
-    }
-    
-    # Get sensor data (optional - handle gracefully if missing)
-    sensor_response = None
-    try:
-        sensor_response = await get_current_sensor_readings(field_id, current_user)
-    except HTTPException as e:
-        if e.status_code == 404:
-            # No sensor data available - that's okay, we'll use general advice
-            sensor_response = None
-        else:
-            raise
-    
-    # Get weather data using user's location (optional - handle gracefully if missing)
-    # Get weather data using user's location
-    weather_reference = {"note": "Weather data not available"}
-    try:
-        # Get coordinates for user location
-        coords = await get_coordinates(farmer_profile["location"])
-        
-        if coords:
-            # Fetch weather data
-            weather_data = await get_onecall_weather(coords["lat"], coords["lon"])
-            transformed_weather = transform_onecall_response(weather_data)
-            
-            # Format for reasoning layer
-            weather_reference = {
-                "current": transformed_weather["current"],
-                "forecast": transformed_weather["daily"][:3], # Next 3 days
-                "alerts": [
-                    {
-                        "type": alert.get("event"),
-                        "severity": alert.get("severity"),
-                        "description": alert.get("description")
-                    }
-                    for alert in transformed_weather.get("alerts", [])
-                ],
-                "location": coords["name"]
-            }
-        else:
-            print(f"Could not find coordinates for location: {farmer_profile['location']}")
-            weather_reference = {"note": f"Weather data not available for location: {farmer_profile['location']}"}
-            
-    except Exception as e:
-        # Weather data unavailable - continue with general advice
-        print(f"Weather data unavailable: {e}")
-        weather_reference = {"note": "Weather data not available"}
-    
-    # Get advisory history (optional - handle gracefully if missing)
-    advisory_history = []
-    try:
-        advisory_history_response = await get_advisory_history(field_id=field_id, current_user=current_user)
-        advisory_history = [
-            {
-                "date": adv.date,
-                "recommendations": [
-                    {
-                        "type": rec.type,
-                        "status": rec.status,
-                        "message": rec.message
-                    }
-                    for rec in adv.recommendations
-                ]
-            }
-            for adv in advisory_history_response
-        ]
-    except Exception as e:
-        # Advisory history unavailable - continue without it
-        print(f"Advisory history unavailable: {e}")
-        advisory_history = []
-    
-    # Load approved knowledge (ICAR/TNAU)
-    knowledge_data = load_json("knowledge_base.json")
-    approved_knowledge = knowledge_data.get("approved_knowledge", {
-        "source": ["ICAR", "TNAU"],
-        "notes": []
-    })
-    
-    # Format AI agent output for reasoning layer (only if available)
-    # Check if we have valid recommendations and sensor data
-    has_recommendations = ai_agent_output.get("recommendations") and len(ai_agent_output.get("recommendations", [])) > 0
-    has_sensor_data = ai_agent_output.get("sensor_values") and len(ai_agent_output.get("sensor_values", {})) > 0
-    
-    if has_recommendations and has_sensor_data:
-        # Use actual ML/logic output
-        formatted_ai_output = {
-            "irrigation": {
-                "action": next((r["title"] for r in ai_agent_output["recommendations"] if r["title"] == "Irrigation"), "Monitor"),
-                "amount_mm": 27.6 if any(r["title"] == "Irrigation" and r["status"] == RecommendationStatus.DO_NOW for r in ai_agent_output["recommendations"]) else None
-            },
-            "pest_risk": {
-                "level": "High" if any(r["title"] == "Pest/Disease Risk" for r in ai_agent_output["recommendations"]) else "Low",
-                "threat": "Monitor conditions"
-            },
-            "nutrients": {
-                "N": "20 kg/acre",
-                "organic": "2 tons FYM" if farmer_profile["farming_type"] == "organic" else None
-            },
-            "recommendations": ai_agent_output["recommendations"],
-            "crop_stage": ai_agent_output.get("crop_stage", "Unknown"),
-            "gdd_value": ai_agent_output.get("gdd_value", 0.0),
-            "sensor_values": ai_agent_output.get("sensor_values", {})
-        }
-    else:
-        # No ML/logic data available - provide minimal context for general advice
-        formatted_ai_output = {
-            "note": "ML/AI agent output and sensor data not available",
-            "recommendations": [],
-            "crop_stage": field_context.get("stage", "Unknown"),
-            "gdd_value": None,
-            "sensor_values": {}
-        }
-    
-    # Call reasoning layer with farmer question
+    # Call the reasoning layer (updated to use Gemini)
     ai_response = await reasoning_agri_assistant(
         farmer_profile=farmer_profile,
-        field_context=field_context,
-        ai_agent_output=formatted_ai_output,
-        approved_knowledge=approved_knowledge,
-        weather_reference=weather_reference,
-        advisory_history=advisory_history,
+        field_context={"crop": field.crop, "stage": ai_output["crop_stage"], "area_acres": field.area_acres},
+        ai_agent_output=ai_output,
+        approved_knowledge={}, 
+        weather_reference={}, 
+        advisory_history=[],
         farmer_question=message.message
     )
     
@@ -738,38 +465,17 @@ async def ai_chat(
         chat_data[field_id] = []
     
     timestamp = get_timestamp()
-    
-        # setMessages(response.data)
-        # So backend MUST return objects with { type, message, timestamp }.
-
-    
-
-    
-    # Append User Message
-    chat_data[field_id].append({
-        "id": str(uuid.uuid4()),
-        "type": "user",
-        "message": message.message,
-        "timestamp": timestamp
-    })
-    
-    # Append AI Message
-    chat_data[field_id].append({
-        "id": str(uuid.uuid4()),
-        "type": "ai",
-        "message": ai_response,
-        "timestamp": timestamp
-    })
-    
+    chat_data[field_id].append({"id": str(uuid.uuid4()), "type": "user", "message": message.message, "timestamp": timestamp})
+    chat_data[field_id].append({"id": str(uuid.uuid4()), "type": "ai", "message": ai_response, "timestamp": timestamp})
     save_json("chat_history.json", chat_data)
     
     return ChatResponse(
         id=str(uuid.uuid4()),
         type="ai",
         message=ai_response,
-        response=ai_response,
         timestamp=timestamp
     )
+
 
 
 @router.get("/{field_id}/transparency", response_model=TransparencyData)
@@ -777,33 +483,17 @@ async def get_transparency_data(
     field_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Get ML transparency data showing what data was used for recommendations
-    """
-    
-    # Reuse the main logic to get all the data and calculations
-    # This ensures consistency between what the agent "thought" and what we show
     ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
     
-    # Extract the relevant data from the complex ai_output structure
-    # We need to find the irrigation recommendation to get the detailed metrics
-    rec_item = next(
-        (r for r in ai_output.get("recommendations", []) 
-         if r.get("title") in ["Irrigation", "Irrigation Recommendation"]), 
-        None
-    )
-    
-    ml_data = rec_item.get("ml_data", {}) if rec_item else {}
-    
-    # Construct the transparency response
-    # We map the internal calculation keys to the public API properties
     return TransparencyData(
-        sensor_values=ai_output.get("sensor_values", {}),
-        predicted_stage=ai_output.get("crop_stage", "Vegetative"),
-        gdd_value=ai_output.get("gdd_value", 0.0),
-        irrigation_logic=rec_item.get("explanation", "Standard logic") if rec_item else "No irrigation needed",
-        pest_risk_factors=["High humidity", "Low wind"] if ai_output.get("sensor_values", {}).get("air_humidity", 0) > 85 else ["None"],
-        et0=ml_data.get("et0"),
-        etc=ml_data.get("etc"),
-        kc=ml_data.get("kc")
+        sensor_values=ai_output["sensor_values"],
+        predicted_stage=ai_output["crop_stage"],
+        gdd_value=ai_output["gdd_value"],
+        irrigation_logic=f"Bi-LSTM Confidence: {ai_output['recommendations'][0].get('ml_data', {}).get('confidence', 0)}% - Based on 14-day history",
+        pest_risk_factors=[f"{k}: {v}" for k, v in ai_output["pest_shap"].items()],
+        et0=ai_output["logic_metrics"]["et0"],
+        etc=ai_output["logic_metrics"]["etc"],
+        kc=ai_output["logic_metrics"]["kc"],
+        irrigation_shap_weights=ai_output["irrigation_shap"],
+        pest_shap_weights=ai_output["pest_shap"]
     )

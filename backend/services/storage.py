@@ -162,6 +162,16 @@ def get_latest_csv_row(file_path: str) -> Optional[Dict]:
     return None
 
 
+def get_recent_readings(file_path: str, limit: int = 14) -> List[Dict]:
+    """
+    Get the most recent N readings from CSV file
+    """
+    data = read_csv(file_path)
+    if data:
+        return data[-limit:]
+    return []
+
+
 def get_csv_by_date_range(file_path: str, start: datetime, end: datetime) -> List[Dict]:
     """
     Get CSV rows within a date range

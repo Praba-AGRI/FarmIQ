@@ -1,0 +1,32 @@
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1773926976.039249   18584 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1773926978.406791   18584 port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+I0000 00:00:1773926981.268101   18584 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:TensorFlow GPU support is not available on native Windows for TensorFlow >= 2.11. Even if CUDA/cuDNN are installed, GPU will not be used. Please use WSL2 or the TensorFlow-DirectML plugin.
+C:\Users\Prabakaran\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\keras\src\models\functional.py:241: UserWarning: The structure of `inputs` doesn't match the expected structure.
+Expected: input_layer
+Received: inputs=['Tensor(shape=(1, 14, 9))']
+  warnings.warn(msg)
+C:\Users\Prabakaran\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\keras\src\models\functional.py:241: UserWarning: The structure of `inputs` doesn't match the expected structure.
+Expected: input_layer
+Received: inputs=['Tensor(shape=(50, 14, 9))']
+  warnings.warn(msg)
+Loading trained models for FastAPI Service...
+Testing Autonomous Phenology System...
+Input: Crop=Rice, GDD=650.0
+Error fetching market data: HTTPSConnectionPool(host='api.data.gov.in', port=443): Read timed out. (read timeout=10)
+
+--- AI Advisory Output (Autonomous Stage Detection) ---
+Predicted Crop Stage: Flowering
+Irrigation Recommended: True (Prob: 0.0269)
+Irrigation Analysis: Critical moisture levels.
+Nutrient Rec: N=29.33kg, P=0.0kg, K=24.83kg
+Pest Risk Identifed: High_Risk_Bacterial_Blight
+
+--- Mathematical Drivers (SHAP) ---
+Irrigation Drivers: {'Stage': 0.0605, 'ETc': 0.0384, 'Temp': 0.0127}
+Pest Drivers: {'Humidity': 0.1352, 'Crop_Type': 0.1174, 'Temperature': 0.0895}
+
+SUCCESS: The AI correctly deduced the 'Flowering' stage from thermal time (GDD)!

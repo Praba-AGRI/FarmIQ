@@ -51,6 +51,41 @@ const TransparencyTab = ({ fieldId }) => {
   const gddValue = transparencyData?.gddValue ?? transparencyData?.gdd_value ?? 0;
   const irrigationLogic = transparencyData?.irrigationLogic || transparencyData?.irrigation_logic || 'No data available';
 
+  const irrigationShap = transparencyData?.irrigation_shap_weights || transparencyData?.irrigationShapWeights || {};
+  const pestShap = transparencyData?.pest_shap_weights || transparencyData?.pestShapWeights || {};
+
+  const renderShapBars = (shapData, title) => {
+    if (Object.keys(shapData).length === 0) return null;
+    
+    // Sort by absolute value descending
+    const sortedFeatures = Object.entries(shapData).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    const maxVal = Math.max(...sortedFeatures.map(([_, v]) => Math.abs(v)), 0.1);
+
+    return (
+      <div className="mt-6">
+        <h5 className="text-sm font-semibold text-gray-700 mb-3">{title} - Key Feature Impact (XAI)</h5>
+        <div className="space-y-3">
+          {sortedFeatures.map(([feature, weight]) => (
+            <div key={feature} className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="font-medium text-gray-600">{feature}</span>
+                <span className={weight > 0 ? "text-green-600" : "text-red-500"}>
+                  {weight > 0 ? "+" : ""}{weight.toFixed(4)}
+                </span>
+              </div>
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${weight > 0 ? "bg-green-500" : "bg-red-400"}`}
+                  style={{ width: `${(Math.abs(weight) / maxVal) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-semibold">{t('transparency')}</h3>
@@ -58,6 +93,7 @@ const TransparencyTab = ({ fieldId }) => {
         This page shows the data and logic used by the AI system to generate recommendations.
       </p>
 
+      {/* Sensor values card */}
       <div className="card">
         <h4 className="text-lg font-semibold mb-4">{t('sensorValues')}</h4>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -68,58 +104,56 @@ const TransparencyTab = ({ fieldId }) => {
             </div>
           ))}
         </div>
-        {Object.keys(sensorValues).length === 0 && (
-          <p className="text-gray-500 text-center py-4">No sensor values available</p>
-        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card">
+          <h4 className="text-lg font-semibold mb-2">{t('predictedStage')}</h4>
+          <p className="text-xl font-semibold text-primary-600">{predictedStage}</p>
+        </div>
+        <div className="card">
+          <h4 className="text-lg font-semibold mb-2">{t('gddValue')}</h4>
+          <p className="text-xl font-semibold">{gddValue} GDD</p>
+        </div>
       </div>
 
       <div className="card">
-        <h4 className="text-lg font-semibold mb-4">{t('predictedStage')}</h4>
-        <p className="text-xl font-semibold text-primary-600">{predictedStage}</p>
-      </div>
-
-      <div className="card">
-        <h4 className="text-lg font-semibold mb-4">{t('gddValue')}</h4>
-        <p className="text-xl font-semibold">{gddValue} GDD</p>
-        <p className="text-sm text-gray-600 mt-2">Growing Degree Days accumulated</p>
-      </div>
-
-      <div className="card">
-        <h4 className="text-lg font-semibold mb-4">{t('irrigationLogic')}</h4>
-        <p className="text-gray-700">{irrigationLogic}</p>
-
-        {/* Detailed Irrigation Metrics */}
-        {(transparencyData.et0 !== undefined || transparencyData.etc !== undefined) && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <h5 className="text-sm font-semibold text-gray-700 mb-2">Calculated Metrics (Penman-Monteith)</h5>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-blue-50 p-2 rounded">
-                <span className="text-xs text-gray-500 block">ET0</span>
-                <span className="font-mono text-blue-700">{transparencyData.et0 ?? 'N/A'} mm</span>
-              </div>
-              <div className="bg-green-50 p-2 rounded">
-                <span className="text-xs text-gray-500 block">Kc (Crop Coeff.)</span>
-                <span className="font-mono text-green-700">{transparencyData.kc ?? 'N/A'}</span>
-              </div>
-              <div className="bg-indigo-50 p-2 rounded">
-                <span className="text-xs text-gray-500 block">ETc (Crop ET)</span>
-                <span className="font-mono text-indigo-700">{transparencyData.etc ?? 'N/A'} mm</span>
-              </div>
+        <h4 className="text-lg font-semibold mb-4">ML & Logic Transparency</h4>
+        
+        {/* Irrigation Logic */}
+        <div className="mb-6 p-4 bg-blue-50/50 rounded-lg border border-blue-100">
+          <h5 className="text-md font-semibold text-blue-800 mb-2">Irrigation Decision (Bi-LSTM Model)</h5>
+          <p className="text-sm text-gray-700 bg-white p-2 rounded mb-3 border border-blue-100">{irrigationLogic}</p>
+          
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white p-2 rounded shadow-sm">
+              <span className="text-[10px] text-gray-500 block">ET0</span>
+              <span className="font-mono text-sm text-blue-700 font-bold">{transparencyData.et0 ?? 'N/A'} mm</span>
+            </div>
+            <div className="bg-white p-2 rounded shadow-sm">
+              <span className="text-[10px] text-gray-500 block">Kc (Crop Coeff.)</span>
+              <span className="font-mono text-sm text-green-700 font-bold">{transparencyData.kc ?? 'N/A'}</span>
+            </div>
+            <div className="bg-white p-2 rounded shadow-sm">
+              <span className="text-[10px] text-gray-500 block">ETc (Crop ET)</span>
+              <span className="font-mono text-sm text-indigo-700 font-bold">{transparencyData.etc ?? 'N/A'} mm</span>
             </div>
           </div>
-        )}
-      </div>
+          
+          {renderShapBars(irrigationShap, "Irrigation Drivers")}
+        </div>
 
-      <div className="card">
-        <h4 className="text-lg font-semibold mb-4">{t('pestRiskFactors')}</h4>
-        <ul className="list-disc list-inside space-y-2 text-gray-700">
-          {pestRiskFactors.map((factor, index) => (
-            <li key={index}>{factor}</li>
-          ))}
-        </ul>
-        {pestRiskFactors.length === 0 && (
-          <p className="text-gray-500 text-center py-4">No pest risk factors identified</p>
-        )}
+        {/* Pest Logic */}
+        <div className="p-4 bg-red-50/50 rounded-lg border border-red-100">
+          <h5 className="text-md font-semibold text-red-800 mb-2">Pest Risk (Random Forest Classifier)</h5>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-3">
+            {pestRiskFactors.map((factor, index) => (
+              <li key={index}>{factor}</li>
+            ))}
+          </ul>
+          
+          {renderShapBars(pestShap, "Pest/Disease Drivers")}
+        </div>
       </div>
     </div>
   );

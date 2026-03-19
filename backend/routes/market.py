@@ -58,31 +58,43 @@ async def get_profit_estimation(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from services.market_integration import MarketIntegrationModule
+
+market_module = MarketIntegrationModule()
+
 @router.get("/advisory/{field_id}", response_model=MarketAdvisory)
 async def get_market_advisory(
     field_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get market-aware advisory for a specific field
+    Get real-time market-aware advisory for a specific field.
+    Integrates live data from data.gov.in and economic calculations.
     """
     fields_data = load_json("fields.json")
-    fields = fields_data.get("fields", [])
-    field = next((f for f in fields if f["field_id"] == field_id), None)
+    field = next((f for f in fields_data.get("fields", []) if f["field_id"] == field_id), None)
     
     if not field:
         raise HTTPException(status_code=404, detail="Field not found")
         
-    farmer_id = current_user.get("user_id")
-    district = "Coimbatore"
+    crop = field.crop
+    state = "Tamil Nadu" # Can be dynamic based on farmer profile
     
-    try:
-        advisory = generate_market_community_advisory(
-            farmer_id,
-            field["crop"],
-            district,
-            field["area_acres"]
-        )
-        return advisory
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # 1. Fetch real-time market price
+    market_data = market_module.fetch_market_prices(state=state, commodity=crop)
+    price_per_q = market_data.get("modal_price", 2500.0)
+    
+    # 2. Calculate Economics
+    # Mocking days to harvest for now, can be derived from GDD/Stage later
+    days_to_harvest = 30 
+    econ = market_module.calculate_economics(crop, field["area_acres"], days_to_harvest, price_per_q)
+    
+    # 3. Construct Advisory
+    return MarketAdvisory(
+        recommended_crop=crop,
+        community_density="Low", # Can be calculated from nearby fields
+        market_demand=MarketDemandIndex.HIGH_DEMAND if price_per_q > 2400 else MarketDemandIndex.MODERATE_DEMAND,
+        expected_profit=econ["estimated_revenue"],
+        risk_level="Low" if market_data.get("trend") == "up" else "Moderate",
+        reasoning_summary=f"Market price for {crop} is currently ₹{price_per_q}/quintal at {market_data.get('market', 'Local')} market. {econ['market_advice']}. Estimated yield: {econ['estimated_yield_quintals']} quintals."
+    )

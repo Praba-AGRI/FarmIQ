@@ -59,6 +59,30 @@ const RecommendationsTab = ({ fieldId }) => {
         </button>
       </div>
 
+      {/* Gemini Human Advisory Card */}
+      {aiReasoning && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl shadow-lg overflow-hidden border border-emerald-400/20">
+          <div className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-7.364l-.707-.707M6.34 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-bold text-white tracking-wide">Gemini AI Smart Advisory</h4>
+            </div>
+            <div className="prose prose-sm prose-invert max-w-none">
+              <div className="bg-white/10 backdrop-blur-sm p-4 rounded-lg border border-white/10 whitespace-pre-line text-emerald-50 leading-relaxed italic">
+                {aiReasoning}
+              </div>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <span className="text-[10px] text-emerald-200 font-medium uppercase tracking-wider bg-emerald-900/40 px-2 py-1 rounded">Bilingual Output (EN/TA)</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6">
         {recommendations.map((recommendation, index) => (
           <RecommendationCard key={recommendation.id || index} recommendation={recommendation} fieldId={fieldId} />

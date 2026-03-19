@@ -24,42 +24,15 @@ import json
 import os
 from datetime import datetime
 from typing import List, Dict, Optional
-from openai import AsyncOpenAI, APIError, RateLimitError, APITimeoutError
+import google.generativeai as genai
 
 # -------------------------------------------------
-# OpenRouter Client
+# Gemini Configuration
 # -------------------------------------------------
 # Get API key from environment variable
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-client = None
-
-if OPENROUTER_API_KEY:
-    try:
-        # OpenRouter client using OpenAI SDK
-        client = AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=OPENROUTER_API_KEY,
-            default_headers={
-                 "HTTP-Referer": os.getenv("OPENROUTER_HTTP_REFERER", ""),
-                 "X-Title": os.getenv("OPENROUTER_APP_NAME", "FarmIQ AI Assistant"),
-            }
-        )
-    except Exception as e:
-        print(f"Warning: Failed to initialize OpenRouter client: {e}")
-        client = None
-else:
-    print("Warning: OPENROUTER_API_KEY environment variable is not set. OpenRouter API will not be available.")
-
-# -------------------------------------------------
-# FALLBACK MODEL LIST (free tier, tried in order)
-# -------------------------------------------------
-FALLBACK_MODELS = [
-    "openai/gpt-oss-120b:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-    "google/gemma-3-27b-it:free",
-    "deepseek/deepseek-r1-distill-llama-70b:free",
-]
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA" # Fallback to key from ALL MODELS for now
+genai.configure(api_key=GEMINI_API_KEY)
+llm_model = genai.GenerativeModel('models/gemini-flash-latest')
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -133,7 +106,7 @@ async def reasoning_agri_assistant(
     farmer_question: Optional[str] = None
 ) -> str:
     """
-    Executes the reasoning layer.
+    Executes the reasoning layer using Gemini.
 
     Inputs:
     - farmer_profile: name, location, language, farming type
@@ -147,21 +120,6 @@ async def reasoning_agri_assistant(
     Output:
     - Human-readable advisory / answer
     """
-    # Check if OpenRouter client is available
-    if not client:
-        error_msg = (
-            "OpenRouter API is not configured. Please set the OPENROUTER_API_KEY environment variable.\n\n"
-            "To fix this:\n"
-            "1. Get an API key from https://openrouter.ai/keys\n"
-            "2. Set it as an environment variable:\n"
-            "   - Windows (PowerShell): $env:OPENROUTER_API_KEY='sk-or-your-key-here'\n"
-            "   - Windows (CMD): set OPENROUTER_API_KEY=sk-or-your-key-here\n"
-            "   - Linux/Mac: export OPENROUTER_API_KEY='sk-or-your-key-here'\n"
-            "3. Or create a .env file in the backend folder with: OPENROUTER_API_KEY=sk-or-your-key-here\n"
-            "4. Restart the backend server"
-        )
-        return error_msg
-    
     try:
         # Build controlled memory
         memory_context = build_memory_context(advisory_history)
@@ -188,70 +146,21 @@ async def reasoning_agri_assistant(
             "instruction": "Use available data when present. If data is marked as not available, provide general agricultural advice based on ICAR/TNAU knowledge and the farmer's question."
         }
 
-        # Call OpenRouter API with model fallback + retry on rate limit
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False, indent=2)}
-        ]
+        # Call Gemini API
+        prompt = f"""
+        {SYSTEM_PROMPT}
+        
+        === CONTEXT DATA ===
+        {json.dumps(user_payload, indent=2, ensure_ascii=False)}
+        
+        Please provide the advisory or answer the question based on the above context.
+        """
 
-        last_error = None
-        for model in FALLBACK_MODELS:
-            for attempt in range(3):  # up to 3 retries per model
-                try:
-                    response = await client.chat.completions.create(
-                        model=model,
-                        messages=messages,
-                    )
-                    # Extract the assistant message
-                    response_content = response.choices[0].message.content
-                    return response_content
-                except RateLimitError as e:
-                    last_error = e
-                    wait = 2 ** attempt  # 1s, 2s, 4s backoff
-                    print(f"Rate limit on '{model}' (attempt {attempt+1}). Waiting {wait}s...")
-                    await asyncio.sleep(wait)
-                    continue  # retry same model once more before switching
-                except Exception as e:
-                    last_error = e
-                    break  # non-rate-limit error — skip to next model
-            # All retries for this model exhausted, move to next
-            print(f"Switching from '{model}' due to rate limit or error.")
-
-        # All models failed
-        raise last_error if last_error else Exception("All fallback models failed.")
+        response = await asyncio.to_thread(llm_model.generate_content, prompt)
+        return response.text
 
     except Exception as e:
-        # Log the error for debugging
-        error_type = type(e).__name__
-        error_details = str(e)
-        
-        # Provide more helpful error messages
-        if "api_key" in error_details.lower() or "authentication" in error_details.lower() or "401" in error_details:
-             error_msg = (
-                f"OpenRouter API authentication failed. Please check your API key.\n\n"
-                f"Error: {error_type}: {error_details}\n\n"
-                f"To fix:\n"
-                f"1. Verify your API key at https://openrouter.ai/keys\n"
-                f"2. Make sure the key is set correctly: OPENROUTER_API_KEY=sk-or-your-key-here\n"
-                f"3. Check if your OpenRouter account has credits\n"
-                f"4. Restart the backend server"
-            )
-        elif "rate limit" in error_details.lower() or "429" in error_details:
-             error_msg = (
-                f"OpenRouter API rate limit exceeded. Please try again in a moment.\n\n"
-                f"Error: {error_type}: {error_details}"
-            )
-        else:
-             error_msg = (
-                f"OpenRouter API error occurred.\n\n"
-                f"Error Type: {error_type}\n"
-                f"Error Details: {error_details}\n\n"
-                f"Please check:\n"
-                f"1. Your internet connection\n"
-                f"2. OpenRouter API status: https://openrouter.ai/\n"
-                f"3. Your API key and account credits"
-            )
-        
-        return error_msg
+        print(f"Gemini reasoning error: {e}")
+        return f"Advisory reasoning unavailable. (Technical error: {type(e).__name__})"
 
 

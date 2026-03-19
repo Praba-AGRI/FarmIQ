@@ -187,6 +187,8 @@ class TransparencyData(BaseModel):
     et0: Optional[float] = None
     etc: Optional[float] = None
     kc: Optional[float] = None
+    irrigation_shap_weights: Optional[dict] = None
+    pest_shap_weights: Optional[dict] = None
 
 
 # Weather Schemas

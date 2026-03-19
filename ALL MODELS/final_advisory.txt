@@ -1,0 +1,25 @@
+Hello, I am **FarmIQ**, your agricultural AI advisor. Based on your recent farm logs and the current real-time data for your Rice crop, here is your action plan:
+
+### **Action Plan for Today**
+
+*   **Immediate Irrigation Required:** Your soil moisture is currently "Critically Low." Since your rice is in the **Flowering stage**, water stress now will severely reduce your yield. You must irrigate immediately to meet the high water demand (ETc) caused by the current 33.5°C temperature.
+*   **Balance Nutrients (Following Urea Application):** You logged applying 50kg of Urea on Day 15. To balance this and support grain formation, the system recommends applying approximately **25kg of Muriate of Potash (K)**. Do not apply more Nitrogen today, as the excess Urea from two days ago combined with high humidity can increase disease risk.
+*   **Pest Monitoring & Spraying Safety:** There is a **High Risk of Bacterial Blight** today. However, our sensors indicate high wind speeds, making it **unsafe to spray** (risk of chemical drift). Instead of spraying, scout your fields for water-soaked streaks on leaf blades.
+
+### **Why this advice? (Data Insights)**
+*   **Irrigation:** The mathematical model shows that the **Crop Stage (0.1353)** and **Crop Evapotranspiration (ETc - 0.0945)** are the primary drivers for this urgent irrigation need. At 33.5°C, the plant is losing water faster than the soil can provide.
+*   **Pest Risk:** The high **Humidity (0.1352)** and **Temperature (0.0895)** are the strongest statistical drivers for the Bacterial Blight alert. These conditions are perfect for the bacteria to spread.
+
+***
+
+வணக்கம், நான் உங்கள் **FarmIQ** விவசாய AI ஆலோசகர். உங்கள் சமீபத்திய பண்ணைப் பதிவுகள் மற்றும் தற்போதைய நெல் பயிர் தரவுகளின் அடிப்படையில் உங்களுக்கான இன்றைய செயல் திட்டம் இதோ:
+
+### **இன்றைய செயல் திட்டம்**
+
+*   **உடனடி நீர் பாசனம் தேவை:** உங்கள் மண்ணின் ஈரப்பதம் தற்போது "மிகவும் குறைவாக" உள்ளது. உங்கள் நெல் இப்போது **பூக்கும் பருவத்தில்** இருப்பதால், இந்த நேரத்தில் ஏற்படும் நீர்ப்பற்றாக்குறை மகசூலை கடுமையாகக் குறைக்கும். தற்போதுள்ள 33.5°C வெப்பத்தால் பயிருக்குத் தேவைப்படும் நீரின் அளவு (ETc) அதிகரித்துள்ளது, எனவே உடனடியாக நீர் பாய்ச்சவும்.
+*   **சத்துக்களை சமநிலைப்படுத்துதல் (யூரியா பயன்பாட்டிற்குப் பிறகு):** 15-வது நாளில் நீங்கள் 50 கிலோ யூரியா இட்டதாகப் பதிவு செய்துள்ளீர்கள். அதைச் சமன் செய்யவும், கருவுறுதலை ஊக்குவிக்கவும், சுமார் **25 கிலோ பொட்டாஷ் (K)** உரத்தை இடுமாறு பரிந்துரைக்கப்படுகிறது. இன்று மேலதிகமாக நைட்ரஜன் (யூரியா) இடவேண்டாம், ஏனெனில் இரண்டு நாட்களுக்கு முன்பு இட்ட யூரியா மற்றும் அதிக ஈரப்பதம் சேர்ந்து நோய்த்தொற்றை அதிகரிக்கக்கூடும்.
+*   **பூச்சி மேலாண்மை மற்றும் தெளிப்பு பாதுகாப்பு:** இன்று **பாக்டீரியா இலைக்கருகல் நோய்** வருவதற்கான வாய்ப்பு அதிகம். இருப்பினும், பலத்த காற்று வீசுவதால் மருந்து தெளிப்பது **பாதுகாப்பானது அல்ல** (மருந்து காற்றில் அடித்துச் செல்லப்படும் அபாயம் உள்ளது). எனவே, மருந்து தெளிப்பதற்குப் பதிலாக, இலைகளில் நீர் கோர்த்தது போன்ற கோடுகள் தென்படுகிறதா என்று வயலைக் கண்காணிப்பது நல்லது.
+
+### **இந்த ஆலோசனையின் காரணம் என்ன? (தரவு விளக்கங்கள்)**
+*   **நீர் பாசனம்:** கணித மாதிரியின்படி, **பயிரின் பருவம் (0.1353)** மற்றும் **பயிரின் நீராவிப்போக்கு (ETc - 0.0945)** ஆகியவை இந்த அவசர நீர் பாசனத் தேவையைத் தீர்மானிக்கின்றன. 33.5°C வெப்பத்தில், மண் வழங்கும் ஈரப்பதத்தை விட பயிர் வேகமாக நீரை இழக்கிறது.
+*   **நோய் அபாயம்:** அதிக **ஈரப்பதம் (0.1352)** மற்றும் **வெப்பநிலை (0.0895)** ஆகியவை பாக்டீரியா இலைக்கருகல் நோய் எச்சரிக்கைக்கான முக்கிய காரணிகளாக புள்ளிவிவரப்படி காட்டுகின்றன. இந்தச் சூழல் பாக்டீரியாக்கள் பரவுவதற்கு மிகவும் ஏதுவானது.
