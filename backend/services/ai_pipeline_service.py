@@ -80,9 +80,9 @@ class AIPipelineService:
         else:
             lstm_input = historical_features
             
-        # Ensure input is a pure NumPy float32 array to avoid Keras UserWarnings
+        # Ensure input is a pure NumPy float32 array and pass it as a named dict to avoid Keras UserWarnings
         clean_input = np.array(lstm_input, dtype=np.float32)
-        irrigation_pred = self.irrigation_model.predict(clean_input, verbose=0)
+        irrigation_pred = self.irrigation_model.predict({"input_layer": clean_input}, verbose=0)
         # Handle Logit Explosion: Apply Sigmoid to squish raw math between 0 and 1
         if irrigation_pred.shape[1] > 1:
             raw_logit = float(irrigation_pred[0][1])
