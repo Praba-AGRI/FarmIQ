@@ -39,11 +39,12 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             pass
             
         sensor_data = {
-            "air_temp": sensor_response.air_temp if sensor_response else 25.0,
-            "air_humidity": sensor_response.air_humidity if sensor_response else 60.0,
-            "soil_moisture": sensor_response.soil_moisture if sensor_response else 50.0,
-            "light_lux": sensor_response.light_lux if sensor_response else 1000.0,
-            "wind_speed": sensor_response.wind_speed if sensor_response else 5.0
+            "air_temp": float(sensor_response.air_temp) if sensor_response else 25.0,
+            "air_humidity": float(sensor_response.air_humidity) if sensor_response else 60.0,
+            "soil_moisture": float(sensor_response.soil_moisture) if sensor_response else 50.0,
+            "light_lux": float(sensor_response.light_lux) if sensor_response else 1000.0,
+            # wind_speed is Optional — must default to 5.0 when None to avoid TypeError in calculate_et0
+            "wind_speed": float(sensor_response.wind_speed) if (sensor_response and sensor_response.wind_speed is not None) else 5.0
         }
         
         # 2. Calculate Environmental Metrics (ET0, ETc, Kc, GDD)

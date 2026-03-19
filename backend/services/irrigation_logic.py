@@ -111,6 +111,13 @@ def calculate_et0(
     solar_radiation,
     altitude=100
 ):
+    # Guard against None values (wind_speed is optional in sensor schema)
+    temp_avg = temp_avg if temp_avg is not None else 30.0
+    temp_max = temp_max if temp_max is not None else 35.0
+    temp_min = temp_min if temp_min is not None else 25.0
+    humidity = humidity if humidity is not None else 60.0
+    wind_speed = wind_speed if wind_speed is not None else 2.0
+    solar_radiation = solar_radiation if solar_radiation is not None else 15.0
 
     es = 0.6108 * math.exp((17.27 * temp_avg) / (temp_avg + 237.3))
     ea = es * (humidity / 100)
