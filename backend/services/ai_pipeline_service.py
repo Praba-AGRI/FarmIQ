@@ -55,7 +55,7 @@ class AIPipelineService:
         # Gemini
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA"
         genai.configure(api_key=GEMINI_API_KEY)
-        self.llm_model = genai.GenerativeModel('models/gemini-flash-latest')
+        self.llm_model = genai.GenerativeModel('gemini-1.5-flash')
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:
@@ -78,7 +78,14 @@ class AIPipelineService:
             lstm_input = historical_features
             
         irrigation_pred = self.irrigation_model.predict(lstm_input, verbose=0)
-        irr_prob = float(irrigation_pred[0][1])
+        # Handle Logit Explosion: Apply Sigmoid to squish raw math between 0 and 1
+        if irrigation_pred.shape[1] > 1:
+            raw_logit = float(irrigation_pred[0][1])
+        else:
+            raw_logit = float(irrigation_pred[0][0])
+            
+        irr_prob = 1 / (1 + np.exp(-raw_logit))
+        
         # Decision: If prob > 0.5 OR Soil Moisture (feature index 2) is very low (< 30)
         current_soil_moisture = lstm_input[0, -1, 2]
         irrigation_needed = bool(irr_prob > 0.5 or current_soil_moisture < 0.3)
