@@ -1,8 +1,12 @@
 import api from './api';
 
 export const recommendationService = {
-  getRecommendations: async (fieldId) => {
-    return api.post(`/fields/${fieldId}/recommendations`);
+  getRecommendations: async (fieldId, lat, lon) => {
+    let url = `/fields/${fieldId}/recommendations`;
+    if (lat !== undefined && lon !== undefined) {
+      url += `?lat=${lat}&lon=${lon}`;
+    }
+    return api.post(url);
   },
 
   getTransparencyData: async (fieldId) => {

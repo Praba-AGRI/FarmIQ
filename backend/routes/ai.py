@@ -12,18 +12,17 @@ from routes.sensors import get_current_sensor_readings
 # Note: Weather endpoints now require lat/lon coordinates
 # TODO: Update to use geolocation or new weather endpoints when location strings can be converted to coordinates
 from routes.advisories import get_advisory_history
-from services.storage import load_json, save_json, get_recent_readings
-from services.ai_pipeline_service import ai_pipeline
-from services.irrigation_logic import irrigation_recommendation
 from services.reasoning_layer import reasoning_agri_assistant
+from services.weather_service import get_onecall_weather, transform_onecall_response
 from utils.field_validation import get_field_or_404
 import datetime
 import numpy as np
+import asyncio
 import json
 
 router = APIRouter()
 
-async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None) -> dict:
+async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None, lat: float = None, lon: float = None) -> dict:
     """
     Get AI agent output using original data from sensors and weather APIs.
     No mock data inside the pipeline.
@@ -32,20 +31,35 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         farmer_id_to_use = farmer_id if current_user is None else current_user["user_id"]
         field = get_field_or_404(field_id, farmer_id_to_use)
         
-        # 1. Get current sensor and weather data
+        # 1. Get current sensor data
         sensor_response = None
         try:
             sensor_response = await get_current_sensor_readings(field_id, {"user_id": farmer_id_to_use})
         except:
             pass
             
+        # Weather Fallback Logic
+        weather_wind = None
+        weather_temp = None
+        weather_humidity = None
+        
+        if lat is not None and lon is not None:
+            try:
+                weather_raw = await get_onecall_weather(lat, lon)
+                weather_data = transform_onecall_response(weather_raw)
+                weather_wind = weather_data["current"]["wind_speed"]
+                weather_temp = weather_data["current"]["temperature"]
+                weather_humidity = weather_data["current"]["humidity"]
+            except Exception as e:
+                print(f"Weather fallback failed: {e}")
+
         sensor_data = {
-            "air_temp": float(sensor_response.air_temp) if sensor_response else 25.0,
-            "air_humidity": float(sensor_response.air_humidity) if sensor_response else 60.0,
-            "soil_moisture": float(sensor_response.soil_moisture) if sensor_response else 50.0,
-            "light_lux": float(sensor_response.light_lux) if sensor_response else 1000.0,
-            # wind_speed is Optional — must default to 5.0 when None to avoid TypeError in calculate_et0
-            "wind_speed": float(sensor_response.wind_speed) if (sensor_response and sensor_response.wind_speed is not None) else 5.0
+            "air_temp": float(sensor_response.air_temp) if (sensor_response and sensor_response.air_temp is not None) else (weather_temp or 25.0),
+            "air_humidity": float(sensor_response.air_humidity) if (sensor_response and sensor_response.air_humidity is not None) else (weather_humidity or 60.0),
+            "soil_moisture": float(sensor_response.soil_moisture) if (sensor_response and sensor_response.soil_moisture is not None) else 50.0,
+            "light_lux": float(sensor_response.light_lux) if (sensor_response and sensor_response.light_lux is not None) else 1000.0,
+            # wind_speed PRIMARY REQUEST: Use weather if sensor is missing
+            "wind_speed": float(sensor_response.wind_speed) if (sensor_response and sensor_response.wind_speed is not None) else (weather_wind or 5.0)
         }
         
         # 2. Calculate Environmental Metrics (ET0, ETc, Kc, GDD)
@@ -218,17 +232,19 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
 @router.post("/{field_id}/recommendations", response_model=AIRecommendationResponse)
 async def get_ai_recommendations(
     field_id: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    # Verify field belongs to user AND get field object for advisory saving
+    # Verify field belongs to user
     field = get_field_or_404(field_id, current_user["user_id"])
     
-    # Get combined output from our new pipeline
-    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    # Get combined output from our new pipeline with coordinates
+    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, lat, lon)
     
     recommendation_items = [RecommendationItem(**rec) for rec in ai_output["recommendations"]]
     
-    # Save to advisory history for future context
+    # Save to advisory history
     advisories_data = load_json("advisories.json")
     advisories = advisories_data.get("advisories", [])
     
@@ -259,7 +275,6 @@ async def get_ai_recommendations(
         recommendations=recommendation_items,
         ai_reasoning_text=ai_output.get("ai_reasoning_text", "No advisory available")
     )
-
 
 @router.post("/{field_id}/recommendations/reasoning", response_model=CardReasoningResponse)
 async def get_recommendation_reasoning(

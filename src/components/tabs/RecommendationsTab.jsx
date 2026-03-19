@@ -22,7 +22,26 @@ const RecommendationsTab = ({ fieldId }) => {
       setLoading(true);
       setError('');
 
-      const response = await recommendationService.getRecommendations(fieldId);
+      let lat, lon;
+      
+      // Try to get geolocation if available
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            });
+          });
+          lat = position.coords.latitude;
+          lon = position.coords.longitude;
+        } catch (geoErr) {
+          console.warn('Geolocation failed for recommendations, using backend fallbacks:', geoErr);
+        }
+      }
+
+      const response = await recommendationService.getRecommendations(fieldId, lat, lon);
       const data = response.data;
 
       setRecommendations(data.recommendations || []);

@@ -163,11 +163,15 @@ async def reasoning_agri_assistant(
             try:
                 model = genai.GenerativeModel(m_name)
                 response = await asyncio.to_thread(model.generate_content, prompt)
-                return response.text
+                if response and hasattr(response, 'text') and response.text:
+                    return str(response.text)
+                continue # Try next if text is empty
             except Exception as e:
                 if "404" in str(e) or "not found" in str(e).lower():
                     continue # Try next model
                 raise e # Re-raise if it's not a 404
+
+        return "Advisory reasoning currently unavailable. Please check your Gemini API configuration."
 
     except Exception as e:
         print(f"Gemini reasoning error: {e}")
