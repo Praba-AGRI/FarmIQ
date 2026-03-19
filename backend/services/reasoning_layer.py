@@ -120,6 +120,9 @@ async def reasoning_agri_assistant(
     Output:
     - Human-readable advisory / answer
     """
+    # Iterative fallback for model names
+    model_names = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+    
     try:
         # Build controlled memory
         memory_context = build_memory_context(advisory_history)
@@ -146,7 +149,7 @@ async def reasoning_agri_assistant(
             "instruction": "Use available data when present. If data is marked as not available, provide general agricultural advice based on ICAR/TNAU knowledge and the farmer's question."
         }
 
-        # Call Gemini API
+        # Call Gemini API with iterative fallback
         prompt = f"""
         {SYSTEM_PROMPT}
         
@@ -156,8 +159,15 @@ async def reasoning_agri_assistant(
         Please provide the advisory or answer the question based on the above context.
         """
 
-        response = await asyncio.to_thread(llm_model.generate_content, prompt)
-        return response.text
+        for m_name in model_names:
+            try:
+                model = genai.GenerativeModel(m_name)
+                response = await asyncio.to_thread(model.generate_content, prompt)
+                return response.text
+            except Exception as e:
+                if "404" in str(e) or "not found" in str(e).lower():
+                    continue # Try next model
+                raise e # Re-raise if it's not a 404
 
     except Exception as e:
         print(f"Gemini reasoning error: {e}")

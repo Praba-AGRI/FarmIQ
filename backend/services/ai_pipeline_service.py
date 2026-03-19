@@ -52,10 +52,13 @@ class AIPipelineService:
             background_data_lstm=background_data_lstm
         )
         
-        # Gemini
+        # Gemini Initialization
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA"
         genai.configure(api_key=GEMINI_API_KEY)
-        self.llm_model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Try to find an available model
+        self.model_name = "gemini-1.5-flash" # Default
+        self.llm_model = genai.GenerativeModel(self.model_name)
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:
@@ -163,12 +166,21 @@ class AIPipelineService:
         3. Explain *why* you are giving today's advice by referencing the mathematical impacts (from the SHAP data).
         4. Provide the complete response first in English, and then provide a perfectly translated version in natural Tamil.
         """
-        try:
-            response = self.llm_model.generate_content(system_prompt)
-            return response.text
-        except Exception as e:
-            print(f"LLM Error: {e}")
-            return "Advisory generation failed. Please check system logs."
+        
+        # Iterative fallback for model names
+        model_names = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+        for m_name in model_names:
+            try:
+                model = genai.GenerativeModel(m_name)
+                response = model.generate_content(system_prompt)
+                return response.text
+            except Exception as e:
+                # If it's a 404/not found, try the next model in the list
+                if "404" in str(e) or "not found" in str(e).lower():
+                    continue
+                print(f"LLM Error ({m_name}): {e}")
+                
+        return "Advisory generation failed. Please check system logs."
 
 # Singleton instance
 ai_pipeline = AIPipelineService()
