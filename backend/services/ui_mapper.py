@@ -101,22 +101,6 @@ def format_dashboard_json(
         "ml_data": {"wind_speed": wind_speed}
     })
 
-    # 5. Market & Harvest Mapper (Phase 3 Blueprint)
-    if market_data:
-        m_card = market_data.get("market_card", {})
-        cards.append({
-            "title": "Market & Harvest",
-            "status": m_card.get("status", "green").lower(),
-            "description": m_card.get("action", "Hold to sell"),
-            "explanation": m_card.get("reason", "Prices are stable."),
-            "timing": "Harvest Window" if "Harvest" in m_card.get("action", "") else "Next 14 days",
-            "ml_data": {
-                "price": round(m_card.get("price", 0), 2),
-                "trend": m_card.get("trend", "STABLE"),
-                "forecast": market_data.get("forecast", {})
-            }
-        })
-    
     overall_summary = f"{crop_name.capitalize()} is currently in {predicted_stage} stage."
     if any(c["status"] == "do_now" for c in cards):
         overall_summary += " Immediate actions are required below."
