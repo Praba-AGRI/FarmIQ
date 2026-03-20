@@ -30,9 +30,9 @@ from typing import List, Dict, Optional
 # OpenRouter Configuration
 # -------------------------------------------------
 # Get API key from environment variable
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "qwen/qwen3-coder:free"
+MODEL_NAME = "openai/gpt-oss-120b:free"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -167,7 +167,8 @@ async def reasoning_agri_assistant(
             "model": MODEL_NAME,
             "messages": [
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            "reasoning": {"enabled": True}
         }
         
         try:

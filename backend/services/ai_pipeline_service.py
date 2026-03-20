@@ -54,9 +54,9 @@ class AIPipelineService:
         
         
         # OpenRouter Initialization
-        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
+        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
         self.openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model_name = "qwen/qwen3-coder:free"
+        self.model_name = "openai/gpt-oss-120b:free"
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:
@@ -178,7 +178,8 @@ class AIPipelineService:
             "model": self.model_name,
             "messages": [
                 {"role": "user", "content": system_prompt}
-            ]
+            ],
+            "reasoning": {"enabled": True}
         }
         
         try:
