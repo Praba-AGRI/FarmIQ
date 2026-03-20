@@ -22,17 +22,17 @@ This layer is LANGUAGE + REASONING ONLY.
 import asyncio
 import json
 import os
+import requests
 from datetime import datetime
 from typing import List, Dict, Optional
-from google import genai
 
 # -------------------------------------------------
-# Gemini Configuration
+# OpenRouter Configuration
 # -------------------------------------------------
 # Get API key from environment variable
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA" 
-client = genai.Client(api_key=GEMINI_API_KEY)
-MODEL_NAME = "gemini-1.5-flash"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+MODEL_NAME = "qwen/qwen3-coder:free"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
@@ -146,7 +146,7 @@ async def reasoning_agri_assistant(
             "instruction": "Use available data when present. If data is marked as not available, provide general agricultural advice based on ICAR/TNAU knowledge and the farmer's question."
         }
 
-        # Call Gemini API with iterative fallback
+        # Call OpenRouter API
         prompt = f"""
         {SYSTEM_PROMPT}
         
@@ -156,20 +156,39 @@ async def reasoning_agri_assistant(
         Please provide the advisory or answer the question based on the above context.
         """
 
-        # Use new SDK client
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://farmiq.ai",
+            "X-OpenRouter-Title": "FarmIQ Agricultural Assistant",
+        }
+        
+        payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+        
         try:
             response = await asyncio.to_thread(
-                client.models.generate_content,
-                model=MODEL_NAME,
-                contents=prompt
+                requests.post,
+                url=OPENROUTER_URL,
+                headers=headers,
+                data=json.dumps(payload)
             )
-            if response and hasattr(response, 'text') and response.text:
-                return str(response.text)
-        except Exception as e:
-            print(f"Gemini reasoning error on {MODEL_NAME}: {e}")
             
-        return "Advisory reasoning currently unavailable. Please check your Gemini API configuration."
+            if response.status_code == 200:
+                result = response.json()
+                return result['choices'][0]['message']['content']
+            else:
+                print(f"OpenRouter Error: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            print(f"OpenRouter reasoning error on {MODEL_NAME}: {e}")
+            
+        return "Advisory reasoning currently unavailable. Please check your OpenRouter API configuration."
 
     except Exception as e:
-        print(f"Gemini reasoning error: {e}")
+        print(f"Reasoning layer logic error: {e}")
 

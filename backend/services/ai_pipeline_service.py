@@ -8,7 +8,7 @@ from pathlib import Path
 from services.models.spraying_rules import SprayingDecisionEngine
 from services.market_integration import MarketIntegrationModule
 from services.shap_explainer import XAIExplainer
-from google import genai
+import requests
 
 # Handle cross-version Keras saved model issues
 try:
@@ -52,9 +52,11 @@ class AIPipelineService:
             background_data_lstm=background_data_lstm
         )
         
-        # Gemini Initialization (New SDK)
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or "AIzaSyD9uePo--HZ8chzMxGInyfx8_ts-8Q-3SA")
-        self.model_name = "gemini-1.5-flash" 
+        
+        # OpenRouter Initialization
+        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
+        self.openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.model_name = "qwen/qwen3-coder:free"
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:
@@ -165,12 +167,33 @@ class AIPipelineService:
         4. Provide the complete response first in English, and then provide a perfectly translated version in natural Tamil.
         """
         
+        headers = {
+            "Authorization": f"Bearer {self.openrouter_api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://farmiq.ai",
+            "X-OpenRouter-Title": "FarmIQ Agricultural Assistant",
+        }
+        
+        payload = {
+            "model": self.model_name,
+            "messages": [
+                {"role": "user", "content": system_prompt}
+            ]
+        }
+        
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=system_prompt,
+            response = requests.post(
+                url=self.openrouter_url,
+                headers=headers,
+                data=json.dumps(payload)
             )
-            return response.text
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['choices'][0]['message']['content']
+            else:
+                print(f"OpenRouter Error: {response.status_code} - {response.text}")
+                
         except Exception as e:
             print(f"LLM Error ({self.model_name}): {e}")
                 
