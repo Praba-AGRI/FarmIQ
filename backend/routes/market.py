@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from routes.auth import get_current_user
 from services.market_service import get_market_price, load_market_prices
 from services.profit_service import calculate_expected_profit
-from services.advisory_service import generate_market_community_advisory
 from services.agronomic_engine import enrich_telemetry_history
 from services.storage import load_json
 from models.schemas import MarketPrice, ProfitEstimation, MarketAdvisory
