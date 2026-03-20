@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../utils/constants';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 seconds timeout to prevent infinite loading
+  timeout: 30000, // 30 seconds timeout to allow ML pipeline cold starts
   headers: {
     'Content-Type': 'application/json',
   },
