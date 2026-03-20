@@ -602,17 +602,64 @@ async def get_transparency_data(
     field_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
+    from services.agronomic_engine import enrich_telemetry_history
+    field = get_field_or_404(field_id, current_user["user_id"])
+    
+    users_data = load_json("users.json")
+    farmer_user = next((u for u in users_data.get("users", []) if u.get("user_id") == current_user["user_id"]), None)
+    farmer_location = farmer_user.get("location", "") if farmer_user else ""
+    
+    history_last_14, cumulative_gdd, predicted_stage = await enrich_telemetry_history(
+        field, farmer_location
+    )
+    
+    if len(history_last_14) == 0:
+        raise HTTPException(status_code=404, detail="No sensor history available for transparency calculation.")
+        
+    while len(history_last_14) < 14:
+        history_last_14.insert(0, history_last_14[0])
+        
+    feature_sequence = []
+    for day in history_last_14:
+        fv = ai_pipeline.construct_feature_vector(
+            day.get("t_avg", 25), day.get("humidity", 60), day.get("soil_moisture", 50),
+            day.get("et0", 4), day.get("etc", 4), day.get("stage", predicted_stage),
+            field.crop, field.area_acres, day.get("solar_radiation", 15) * 1000
+        )
+        feature_sequence.append(fv)
+        
+    lstm_input = np.array(feature_sequence)
+    irr_prob, irrigation_needed, final_lstm_input = ai_pipeline.predict_irrigation(lstm_input)
+    
+    current_day = history_last_14[-1]
+    
+    from datetime import datetime
+    now = datetime.now()
+    season = "Kharif" if 6 <= now.month <= 10 else "Rabi"
+    temp = current_day.get("t_avg", 25)
+    humidity = current_day.get("humidity", 60)
+    
+    disease_risk, pest_input = ai_pipeline.predict_pests(
+        field.crop, predicted_stage, season, temp, humidity
+    )
+    
+    irrigation_shap, pest_shap = ai_pipeline.get_shap_drivers(final_lstm_input, pest_input)
     
     return TransparencyData(
-        sensor_values=ai_output["sensor_values"],
-        predicted_stage=ai_output["crop_stage"],
-        gdd_value=ai_output["gdd_value"],
-        irrigation_logic=f"Bi-LSTM Confidence: {ai_output['recommendations'][0].get('ml_data', {}).get('confidence', 0)}% - Based on 14-day history",
-        pest_risk_factors=[f"{k}: {v}" for k, v in ai_output["pest_shap"].items()],
-        et0=ai_output["logic_metrics"]["et0"],
-        etc=ai_output["logic_metrics"]["etc"],
-        kc=ai_output["logic_metrics"]["kc"],
-        irrigation_shap_weights=ai_output["irrigation_shap"],
-        pest_shap_weights=ai_output["pest_shap"]
+        sensor_values={
+            "air_temp": round(temp, 2),
+            "air_humidity": round(humidity, 2),
+            "soil_moisture": current_day.get("soil_moisture", 0),
+            "light_lux": current_day.get("solar_radiation", 0) * 1000,
+            "wind_speed": current_day.get("wind_speed", 0)
+        },
+        predicted_stage=predicted_stage,
+        gdd_value=cumulative_gdd,
+        irrigation_logic=f"Bi-LSTM Confidence: {round(irr_prob * 100, 1)}% - Based on 14-day history",
+        pest_risk_factors=[f"{k}: {v}" for k, v in pest_shap.items()],
+        et0=current_day.get("et0", 0),
+        etc=current_day.get("etc", 0),
+        kc=current_day.get("kc", 0),
+        irrigation_shap_weights=irrigation_shap,
+        pest_shap_weights=pest_shap
     )
