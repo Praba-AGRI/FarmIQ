@@ -32,7 +32,8 @@ from typing import List, Dict, Optional
 # Get API key from environment variable
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
+# Gemma is lighter/faster on OpenRouter free-tier and helps reduce rate limiting.
+MODEL_NAME = "google/gemma-3-27b-it:free"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)

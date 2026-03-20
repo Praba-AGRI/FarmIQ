@@ -22,8 +22,33 @@ import datetime
 import numpy as np
 import asyncio
 import json
+import time
 
 router = APIRouter()
+
+#
+# Simple in-memory TTL caches.
+# NOTE: These are only safe if the backend runs as a single instance (no multi-replica autoscaling).
+#
+CACHE_TTL_SECONDS = 3600
+_advisory_cache: dict = {}  # cache_key -> (expires_at, payload_dict)
+_card_reasoning_cache: dict = {}  # cache_key -> (expires_at, reasoning_text)
+
+
+def _cache_get(cache: dict, cache_key: str):
+    cached = cache.get(cache_key)
+    if not cached:
+        return None
+    expires_at, value = cached
+    if time.time() >= expires_at:
+        cache.pop(cache_key, None)
+        return None
+    return value
+
+
+def _cache_set(cache: dict, cache_key: str, value, ttl_seconds: int = CACHE_TTL_SECONDS):
+    cache[cache_key] = (time.time() + ttl_seconds, value)
+
 
 async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict = None, lat: float = None, lon: float = None, skip_llm: bool = False, language: str = "en") -> dict:
     """
@@ -337,16 +362,33 @@ async def generate_manual_advisory(
     field_id: str,
     lat: Optional[float] = None,
     lon: Optional[float] = None,
+    language: Optional[str] = "en",
     current_user: dict = Depends(get_current_user)
 ):
     """
     Manually trigger the FarmIQ AI to generate a human-readable advisory.
     Saves rate limits by only calling when the farmer explicitly requests it.
     """
-    field = get_field_or_404(field_id, current_user["user_id"])
+    farmer_id = current_user["user_id"]
+    lat_key = round(lat, 3) if lat is not None else None
+    lon_key = round(lon, 3) if lon is not None else None
+    cache_key = f"advisory:{farmer_id}:{field_id}:{language}:{lat_key}:{lon_key}"
+    cached_payload = _cache_get(_advisory_cache, cache_key)
+    if cached_payload is not None:
+        return AIRecommendationResponse(**cached_payload)
+
+    field = get_field_or_404(field_id, farmer_id)
     
     # Get output WITH LLM advisory
-    ai_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, lat, lon, skip_llm=False)
+    ai_output = await get_ai_agent_output(
+        field_id,
+        farmer_id,
+        current_user,
+        lat,
+        lon,
+        skip_llm=False,
+        language=language or "en",
+    )
     
     recommendation_items = [RecommendationItem(**rec) for rec in ai_output["recommendations"]]
     
@@ -368,12 +410,16 @@ async def generate_manual_advisory(
     advisories_data["advisories"] = advisories
     save_json("advisories.json", advisories_data)
     
-    return AIRecommendationResponse(
+    response = AIRecommendationResponse(
         crop_stage=ai_output["crop_stage"],
         gdd_value=ai_output["gdd_value"],
         recommendations=recommendation_items,
         ai_reasoning_text=ai_output.get("ai_reasoning_text", "No advisory available")
     )
+    # Avoid caching known "bad" responses (errors / rate limit messages).
+    if isinstance(response.ai_reasoning_text, str) and "Error generating advisory" not in response.ai_reasoning_text:
+        _cache_set(_advisory_cache, cache_key, response.model_dump())
+    return response
 
 @router.post("/{field_id}/recommendations/reasoning", response_model=CardReasoningResponse)
 async def get_recommendation_reasoning(
@@ -387,10 +433,7 @@ async def get_recommendation_reasoning(
     """
     # Verify field ownership
     field = get_field_or_404(field_id, current_user["user_id"])
-    
-    # Get all context (Farmer, Field, Sensors, Advisory History)
-    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user)
-    
+
     users_data = load_json("users.json")
     farmer_user = next((u for u in users_data.get("users", []) if u.get("user_id") == current_user["user_id"]), None)
     if not farmer_user:
@@ -405,6 +448,15 @@ async def get_recommendation_reasoning(
         "preferred_language": language,  # Use requested language
         "farming_type": farmer_user.get("farming_type", "conventional")
     }
+
+    cache_key = f"card_reasoning:{current_user['user_id']}:{field_id}:{request.title}:{language}"
+    cached_reasoning = _cache_get(_card_reasoning_cache, cache_key)
+    if cached_reasoning is not None:
+        return CardReasoningResponse(reasoning=cached_reasoning)
+
+    # Get all context (Farmer, Field, Sensors, Advisory History)
+    # skip_llm=True prevents calling the OpenRouter-based advisory generator again.
+    ai_agent_output = await get_ai_agent_output(field_id, current_user["user_id"], current_user, skip_llm=True)
     
     field_context = {
         "crop": field.crop,
@@ -436,6 +488,10 @@ async def get_recommendation_reasoning(
         advisory_history=[], # Optional
         farmer_question=prompt
     )
+
+    # Avoid caching known "bad" responses (rate limit messages, errors).
+    if isinstance(reasoning_text, str) and "Rate Limit" not in reasoning_text and "Advisory reasoning error" not in reasoning_text:
+        _cache_set(_card_reasoning_cache, cache_key, reasoning_text)
     
     return CardReasoningResponse(reasoning=reasoning_text)
 

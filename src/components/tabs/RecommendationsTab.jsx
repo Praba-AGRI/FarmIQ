@@ -42,7 +42,9 @@ const RecommendationsTab = ({ fieldId }) => {
         }
       }
 
-      const response = await recommendationService.getRecommendations(fieldId, lat, lon, globalLanguage);
+      // Single-pass: get the full advisory including per-card detailed reasoning.
+      // This avoids per-card reasoning fan-out (which triggers OpenRouter 429 rate limits).
+      const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
       const data = response.data;
 
       setRecommendations(data.recommendations || []);
