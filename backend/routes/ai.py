@@ -149,36 +149,60 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         if not skip_llm:
             human_advisory = ai_pipeline.generate_human_advisory(raw_ml_data, history_summaries)
 
-        # 5. Response Assembly
+        # 5. Response Assembly (Simplified for Farmers)
+        irr_amount_mm = lr.get("recommended_irrigation_mm", 0)
+        # Rule of thumb: 10mm = 60 mins for a standard pump/field size
+        pump_minutes = int(round(irr_amount_mm * 6))
+        
+        # Irrigation Card
+        irr_action = f"Irrigate for {pump_minutes} minutes today." if irrigation_needed else "No irrigation needed today."
+        irr_why = "Soil moisture is dropping fast, and satellite weather data shows no rain expected for the next 48 hours." if irrigation_needed else "Soil moisture is at optimal levels and current evapotranspiration is low."
+        
+        # Nutrient Card
+        nitro_kg = round(float(nut_pred[0]))
+        nut_action = f"Prepare to apply {nitro_kg}kg of Nitrogen mix this week."
+        nut_why = f"Your {field.crop} is deep in the {predicted_stage} stage and needs immediate fuel for leaf growth before the flowering phase begins."
+        
+        # Pest Card
+        pest_action = "No pesticide needed today." if disease_risk == "Healthy" else f"Apply treatment for {disease_risk} risk."
+        pest_why = f"Current farm temperatures ({round(sensor_data['air_temp'], 1)}°C) and humidity are not favorable for major local pest outbreaks." if disease_risk == "Healthy" else f"Environmental conditions are high risk for {disease_risk}. Monitor your crop closely."
+        
+        # Spray Card
+        is_safe_to_spray = "Safe to spray" in spray_decision
+        spray_action = "Perfect conditions for spraying." if is_safe_to_spray else "Do not spray today. High wind risk."
+        spray_why = f"Live sensors detect wind speeds of {round(sensor_data['wind_speed'], 1)}m/s. Spraying now will cause chemical drift and waste money. Wait until tomorrow morning." if not is_safe_to_spray else "Wind speed and humidity are within the optimal range for effective chemical application."
+
         recommendations = [
             {
                 "title": "Irrigation",
-                "description": "Irrigation recommended" if irrigation_needed else "No irrigation needed",
+                "description": irr_action,
                 "status": RecommendationStatus.DO_NOW if irrigation_needed else RecommendationStatus.MONITOR,
-                "explanation": f"Bi-LSTM model predicts {round(irr_prob*100, 1)}% irrigation requirement probability based on 14-day microclimate patterns.",
-                "timing": "Immediate" if irrigation_needed else "Next 24h",
+                "explanation": irr_why,
+                "timing": "Today" if irrigation_needed else "Next 24h",
                 "ml_data": {
                     "confidence": round(irr_prob * 100, 1),
-                    "amount_mm": lr.get("recommended_irrigation_mm", 0),
+                    "amount_mm": irr_amount_mm,
+                    "pump_minutes": pump_minutes,
                     "shap": irrigation_shap
                 }
             },
             {
                 "title": "Nutrients",
-                "description": f"Apply N:{round(nut_pred[0],2)} P:{round(nut_pred[1],2)} K:{round(nut_pred[2],2)} kg/acre",
+                "description": nut_action,
                 "status": RecommendationStatus.WAIT,
-                "explanation": f"Nutrient requirements calculated for {predicted_stage} stage using RF model.",
+                "explanation": nut_why,
                 "timing": "Next 2-3 days",
                 "ml_data": {
                     "confidence": 85,
-                    "prediction": f"N:{round(nut_pred[0],1)}"
+                    "prediction": f"N:{round(nut_pred[0],1)}",
+                    "nitro_kg": nitro_kg
                 }
             },
             {
                 "title": "Pest Management",
-                "description": f"Risk Level: {disease_risk}",
-                "status": RecommendationStatus.DO_NOW if disease_risk != "Healthy" else RecommendationStatus.MONITOR,
-                "explanation": f"RF Classifier identifies {disease_risk} risk under current {season} conditions.",
+                "description": pest_action,
+                "status": RecommendationStatus.GREEN if disease_risk == "Healthy" else RecommendationStatus.DO_NOW,
+                "explanation": pest_why,
                 "timing": "Monitor daily",
                 "ml_data": {
                     "confidence": 92,
@@ -188,9 +212,9 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             },
             {
                 "title": "Spraying Conditions",
-                "description": spray_decision,
-                "status": RecommendationStatus.MONITOR,
-                "explanation": "Safety check based on real-time Wind and Humidity sensor data.",
+                "description": spray_action,
+                "status": RecommendationStatus.MONITOR if is_safe_to_spray else RecommendationStatus.DO_NOW,
+                "explanation": spray_why,
                 "timing": "Check before application"
             }
         ]

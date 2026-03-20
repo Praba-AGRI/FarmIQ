@@ -18,6 +18,7 @@ class RecommendationStatus(str, Enum):
     DO_NOW = "do_now"
     WAIT = "wait"
     MONITOR = "monitor"
+    GREEN = "green"
 
 
 # User Schemas
