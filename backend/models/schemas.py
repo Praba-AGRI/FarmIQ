@@ -132,9 +132,6 @@ class AggregatedSensorData(BaseModel):
 
 
 # AI Schemas
-class AIRecommendationRequest(BaseModel):
-    farmer_id: str
-    field_id: str
 
 
 class RecommendationItem(BaseModel):
@@ -169,14 +166,6 @@ class ChatResponse(BaseModel):
     # Let's keep it simple.
 
 
-class CardReasoningRequest(BaseModel):
-    title: str
-    language: Optional[str] = "en"  # "en" or "ta"
-    field_context: Optional[dict] = None
-
-
-class CardReasoningResponse(BaseModel):
-    reasoning: str
 
 
 class TransparencyData(BaseModel):
