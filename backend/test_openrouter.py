@@ -7,9 +7,9 @@ def test_openrouter():
     load_dotenv()
     api_key = os.getenv("OPENROUTER_API_KEY")
     url = "https://openrouter.ai/api/v1/chat/completions"
-    model = "openai/gpt-oss-120b:free"
+    MODEL_NAME = "google/gemini-2.0-flash-lite-preview-02-05:free"
     
-    print(f"Testing OpenRouter with model: {model}")
+    print(f"Testing OpenRouter with model: {MODEL_NAME}")
     print(f"API Key (first 10 chars): {api_key[:10]}...")
     
     headers = {

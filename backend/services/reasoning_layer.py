@@ -32,7 +32,7 @@ from typing import List, Dict, Optional
 # Get API key from environment variable
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "openai/gpt-oss-120b:free"
+MODEL_NAME = "google/gemini-2.0-flash-lite-preview-02-05:free"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)

@@ -155,7 +155,8 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         # 5. Response Assembly (Simplified for Farmers)
         irr_amount_mm = lr.get("recommended_irrigation_mm", 0)
         # Rule of thumb: 10mm = 60 mins for a standard pump/field size
-        pump_minutes = int(round(irr_amount_mm * 6))
+        # Main Action (Huge Text) should be at least 45 minutes if deficit is detected
+        pump_minutes = max(45, int(round(irr_amount_mm * 6))) if irrigation_needed else 0
         
         # Irrigation Card
         irr_action = f"Irrigate for {pump_minutes} minutes today." if irrigation_needed else "No irrigation needed today."
