@@ -1,18 +1,18 @@
 import api from './api';
 
 export const recommendationService = {
-  getRecommendations: async (fieldId, lat, lon) => {
-    let url = `/fields/${fieldId}/recommendations`;
+  getRecommendations: async (fieldId, lat, lon, language = 'en') => {
+    let url = `/fields/${fieldId}/recommendations?language=${language}`;
     if (lat !== undefined && lon !== undefined) {
-      url += `?lat=${lat}&lon=${lon}`;
+      url += `&lat=${lat}&lon=${lon}`;
     }
     return api.post(url);
   },
   
-  generateAdvisory: async (fieldId, lat, lon) => {
-    let url = `/fields/${fieldId}/advisory/generate`;
+  generateAdvisory: async (fieldId, lat, lon, language = 'en') => {
+    let url = `/fields/${fieldId}/advisory/generate?language=${language}`;
     if (lat !== undefined && lon !== undefined) {
-      url += `?lat=${lat}&lon=${lon}`;
+      url += `&lat=${lat}&lon=${lon}`;
     }
     return api.post(url);
   },

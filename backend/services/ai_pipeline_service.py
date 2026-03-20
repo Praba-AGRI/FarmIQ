@@ -145,27 +145,60 @@ class AIPipelineService:
         
         return irrigation_shap, pest_shap
 
-    def generate_human_advisory(self, raw_ml_data, recent_history):
+    def generate_human_advisory(self, raw_ml_data, recent_history, language="en"):
         memory_string = "No recent history available."
         if recent_history and len(recent_history) > 0:
             last_three = recent_history[-3:]
             memory_string = "\n".join([f"- {item}" for item in last_three])
 
+        lang_instruction = "English" if language == "en" else "Tamil"
+
         system_prompt = f"""
-        You are 'FarmIQ', an expert agricultural AI advisory system for smallholder farmers in Tamil Nadu. 
-        
-        === FARMER'S RECENT HISTORY ===
-        {memory_string}
-        
-        === CURRENT REAL-TIME ML DATA ===
-        {json.dumps(raw_ml_data, indent=2)}
-        
-        Your task:
-        1. Write a clear, 3-bullet point action plan for today.
-        2. *CRITICAL*: If the "Recent History" is relevant to today's data, you MUST acknowledge it.
-        3. Explain *why* you are giving today's advice by referencing the mathematical impacts (from the SHAP data).
-        4. Provide the complete response first in English, and then provide a perfectly translated version in natural Tamil.
-        """
+You are the FarmIQ Agronomy Engine, an expert agricultural AI for smallholder farmers in Tamil Nadu. 
+Analyze the raw ML data and output a STRICT JSON response in {lang_instruction}.
+Do NOT output markdown code blocks (no ```json). Output ONLY the raw JSON string.
+
+=== FARMER'S RECENT HISTORY ===
+{memory_string}
+
+=== CURRENT REAL-TIME ML DATA ===
+{json.dumps(raw_ml_data, indent=2)}
+
+JSON SCHEMA REQUIREMENTS:
+{{
+  "overall_summary": "A 2-sentence high-level summary of the entire farm's current status and urgent needs.",
+  "cards": [
+    {{
+      "card_name": "Irrigation",
+      "traffic_light": "RED|YELLOW|GREEN",
+      "main_action": "The simple, imperative command (e.g., Irrigate 45 mins).",
+      "simple_why": "One sentence explaining why based on weather/soil.",
+      "detailed_reasoning": "Explain the Bi-LSTM/Random Forest reasoning and reference mathematical impacts from SHAP data."
+    }},
+    {{
+      "card_name": "Nutrients",
+      "traffic_light": "RED|YELLOW|GREEN",
+      "main_action": "Impereative fertilizer command.",
+      "simple_why": "One sentence why based on crop stage.",
+      "detailed_reasoning": "Deep technical explanation of nutrient needs."
+    }},
+    {{
+      "card_name": "Pest Management",
+      "traffic_light": "RED|YELLOW|GREEN",
+      "main_action": "Risk status or treatment command.",
+      "simple_why": "One sentence why based on environment.",
+      "detailed_reasoning": "Technical breakdown of pest risk factors."
+    }},
+    {{
+      "card_name": "Spraying Conditions",
+      "traffic_light": "RED|YELLOW|GREEN",
+      "main_action": "Safety decision (Spray/Do Not Spray).",
+      "simple_why": "One sentence why based on wind/humidity sensors.",
+      "detailed_reasoning": "Analysis of drift risks and cost impact."
+    }}
+  ]
+}}
+"""
         
         headers = {
             "Authorization": f"Bearer {self.openrouter_api_key}",
@@ -191,14 +224,21 @@ class AIPipelineService:
             
             if response.status_code == 200:
                 result = response.json()
-                return result['choices'][0]['message']['content']
+                content = result['choices'][0]['message']['content']
+                # Strip markdown if LLM includes it despite instructions
+                content = content.replace("```json", "").replace("```", "").strip()
+                try:
+                    return json.loads(content)
+                except:
+                    print(f"Failed to parse LLM JSON: {content[:100]}...")
+                    return {"overall_summary": content[:200], "cards": []}
             else:
                 print(f"OpenRouter Error: {response.status_code} - {response.text}")
                 
         except Exception as e:
             print(f"LLM Error ({self.model_name}): {e}")
                 
-        return "Advisory generation failed. Please check system logs."
+        return {"overall_summary": "Advisory generation failed. Please check system logs.", "cards": []}
 
 # Singleton instance
 ai_pipeline = AIPipelineService()

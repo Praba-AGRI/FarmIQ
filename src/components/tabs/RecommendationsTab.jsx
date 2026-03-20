@@ -7,7 +7,7 @@ import ErrorMessage from '../common/ErrorMessage';
 import { RECOMMENDATION_STATUS } from '../../utils/constants';
 
 const RecommendationsTab = ({ fieldId }) => {
-  const { t } = useLanguage();
+  const { t, language: globalLanguage } = useLanguage();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,7 +16,7 @@ const RecommendationsTab = ({ fieldId }) => {
 
   useEffect(() => {
     fetchRecommendations();
-  }, [fieldId]);
+  }, [fieldId, globalLanguage]);
 
   const fetchRecommendations = async () => {
     try {
@@ -42,7 +42,7 @@ const RecommendationsTab = ({ fieldId }) => {
         }
       }
 
-      const response = await recommendationService.getRecommendations(fieldId, lat, lon);
+      const response = await recommendationService.getRecommendations(fieldId, lat, lon, globalLanguage);
       const data = response.data;
 
       setRecommendations(data.recommendations || []);
@@ -69,7 +69,7 @@ const RecommendationsTab = ({ fieldId }) => {
         } catch (e) {}
       }
 
-      const response = await recommendationService.generateAdvisory(fieldId, lat, lon);
+      const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
       setAiReasoning(response.data.ai_reasoning_text);
     } catch (err) {
       console.error('Error generating advisory:', err);
