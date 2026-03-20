@@ -43,13 +43,23 @@ async def enrich_telemetry_history(field: dict, farmer_location: str, lat: float
             
     current_date = start_date
     cumulative_gdd = 0.0
+    stage = "Unknown"
     
     history_last_14 = []
     
     while current_date <= end_date:
         date_str = current_date.strftime("%Y-%m-%d")
+        days_diff_from_now = (end_date.date() - current_date.date()).days
         
-        # 1. Spatio-Temporal Fusion
+        # 1. Fast-forward ancient dates to eliminate 100+ MongoDB network requests
+        if days_diff_from_now >= 14:
+            t_max, t_min = 32.0, 22.0
+            daily_gdd = calculate_daily_gdd(t_max, t_min, crop)
+            cumulative_gdd += daily_gdd
+            current_date += timedelta(days=1)
+            continue
+            
+        # 2. Spatio-Temporal Fusion for the crucial last 14 days
         day_record = await daily_telemetry_collection.find_one({"sensor_node_id": node_id, "date": date_str})
         
         needs_weather_patch = False
@@ -73,22 +83,16 @@ async def enrich_telemetry_history(field: dict, farmer_location: str, lat: float
             needs_weather_patch = True
             
         if needs_weather_patch:
-            days_diff_weather = (end_date.date() - current_date.date()).days
-            if days_diff_weather < 14:
-                # Autonomously call OpenWeatherMap only for the crucial 14 ML days
-                try:
-                    weather_summary = await get_day_summary(resolved_lat, resolved_lon, date_str)
-                    t_max = weather_summary.get("temperature", {}).get("max", 30.0)
-                    t_min = weather_summary.get("temperature", {}).get("min", 20.0)
-                    t_avg = (t_max + t_min) / 2
-                    humidity = weather_summary.get("humidity", {}).get("afternoon", 60.0)
-                    wind = weather_summary.get("wind", {}).get("max", {}).get("speed", 2.0)
-                except Exception as e:
-                    print(f"Weather patch failed for {date_str}: {e}")
-            else:
-                # Fast approximation to prevent 60-second timeouts on old sowing dates
-                t_max, t_min, t_avg = 32.0, 22.0, 27.0
-                humidity, wind = 65.0, 3.0                
+            # Autonomously call OpenWeatherMap
+            try:
+                weather_summary = await get_day_summary(resolved_lat, resolved_lon, date_str)
+                t_max = weather_summary.get("temperature", {}).get("max", 30.0)
+                t_min = weather_summary.get("temperature", {}).get("min", 20.0)
+                t_avg = (t_max + t_min) / 2
+                humidity = weather_summary.get("humidity", {}).get("afternoon", 60.0)
+                wind = weather_summary.get("wind", {}).get("max", {}).get("speed", 2.0)
+            except Exception as e:
+                print(f"Weather patch failed for {date_str}: {e}")
         # 2. Phenology & GDD Math
         daily_gdd = calculate_daily_gdd(t_max, t_min, crop)
         cumulative_gdd += daily_gdd
