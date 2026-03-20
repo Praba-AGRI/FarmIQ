@@ -25,7 +25,11 @@ const LoginPage = () => {
         setError(result.error);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      if (err.code === 'ECONNABORTED') {
+        setError('Connection timed out. Please check if the backend server is running.');
+      } else {
+        setError(err.response?.data?.detail || err.response?.data?.message || 'An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

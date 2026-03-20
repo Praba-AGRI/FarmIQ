@@ -26,8 +26,14 @@ export const AuthProvider = ({ children }) => {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
-        // Fetch fresh profile data from backend to ensure we have latest info (including profile picture)
-        fetchUserProfile();
+        // Fetch fresh profile data from backend to ensure we have latest info
+        // We set a race condition to ensure the app doesn't hang on mount
+        const profilePromise = fetchUserProfile();
+        const timeoutPromise = new Promise(resolve => setTimeout(resolve, 3000));
+        
+        Promise.race([profilePromise, timeoutPromise]).then(() => {
+          setLoading(false);
+        });
       } catch (e) {
         localStorage.removeItem('user');
         localStorage.removeItem('token');
