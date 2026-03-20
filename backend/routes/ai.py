@@ -643,7 +643,16 @@ async def get_transparency_data(
         field.crop, predicted_stage, season, temp, humidity
     )
     
-    irrigation_shap, pest_shap = ai_pipeline.get_shap_drivers(final_lstm_input, pest_input)
+    nut_pred, nutrient_input = ai_pipeline.predict_nutrients(
+        field.crop, predicted_stage, field.area_acres
+    )
+    
+    irrigation_shap, pest_shap, nutrient_shap, spraying_shap = ai_pipeline.get_shap_drivers(
+        final_lstm_input, 
+        pest_input, 
+        nutrient_input=nutrient_input,
+        spray_context={"wind_speed": current_day.get("wind_speed", 0), "temp": temp, "humidity": humidity}
+    )
     
     return TransparencyData(
         sensor_values={
@@ -657,9 +666,12 @@ async def get_transparency_data(
         gdd_value=cumulative_gdd,
         irrigation_logic=f"Bi-LSTM Confidence: {round(irr_prob * 100, 1)}% - Based on 14-day history",
         pest_risk_factors=[f"{k}: {v}" for k, v in pest_shap.items()],
+        nutrient_recommendations=[f"Apply {round(nut_pred[0])}kg N, {round(nut_pred[1])}kg P, {round(nut_pred[2])}kg K"],
         et0=current_day.get("et0", 0),
         etc=current_day.get("etc", 0),
         kc=current_day.get("kc", 0),
         irrigation_shap_weights=irrigation_shap,
-        pest_shap_weights=pest_shap
+        pest_shap_weights=pest_shap,
+        nutrient_shap_weights=nutrient_shap,
+        spraying_shap_weights=spraying_shap
     )

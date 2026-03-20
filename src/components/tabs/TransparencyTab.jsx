@@ -143,16 +143,33 @@ const TransparencyTab = ({ fieldId }) => {
           {renderShapBars(irrigationShap, "Irrigation Drivers")}
         </div>
 
+        {/* Nutrient Logic */}
+        <div className="mb-6 p-4 bg-green-50/50 rounded-lg border border-green-100">
+          <h5 className="text-md font-semibold text-green-800 mb-2">Nutrient Recommendation (Random Forest)</h5>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-3">
+            {(transparencyData?.nutrient_recommendations || transparencyData?.nutrientRecommendations || []).map((factor, index) => (
+              <li key={index}>{factor}</li>
+            ))}
+          </ul>
+          {renderShapBars(transparencyData?.nutrient_shap_weights || transparencyData?.nutrientShapWeights || {}, "Nutrient Drivers")}
+        </div>
+
         {/* Pest Logic */}
-        <div className="p-4 bg-red-50/50 rounded-lg border border-red-100">
+        <div className="mb-6 p-4 bg-red-50/50 rounded-lg border border-red-100">
           <h5 className="text-md font-semibold text-red-800 mb-2">Pest Risk (Random Forest Classifier)</h5>
           <ul className="list-disc list-inside space-y-1 text-sm text-gray-700 mb-3">
             {pestRiskFactors.map((factor, index) => (
               <li key={index}>{factor}</li>
             ))}
           </ul>
-          
           {renderShapBars(pestShap, "Pest/Disease Drivers")}
+        </div>
+
+        {/* Spraying Logic */}
+        <div className="p-4 bg-yellow-50/50 rounded-lg border border-yellow-100">
+          <h5 className="text-md font-semibold text-yellow-800 mb-2">Spraying Conditions (Rule-Based Engine)</h5>
+          <p className="text-sm text-gray-700 mb-3">Decision drivers based on sensor safety thresholds:</p>
+          {renderShapBars(transparencyData?.spraying_shap_weights || transparencyData?.sprayingShapWeights || {}, "Safety Factor Proximity")}
         </div>
       </div>
     </div>

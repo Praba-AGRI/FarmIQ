@@ -137,14 +137,37 @@ class AIPipelineService:
             field_size, light / 1000.0
         ]
 
-    def get_shap_drivers(self, lstm_input, pest_input):
+    def get_shap_drivers(self, lstm_input, pest_input, nutrient_input=None, spray_context=None):
         lstm_features = ["Temp", "Humidity", "SoilMoisture", "ET0", "ETc", "Stage", "Type", "FieldSize", "Light"]
         pest_features = ["Crop_Type", "Crop_Stage", "Season", "Temperature", "Humidity"]
+        nut_features = ["Crop_Type", "Crop_Stage", "Field_Size"]
         
         irrigation_shap = self.xai_explainer.extract_top_features_lstm(lstm_input, lstm_features)
         pest_shap = self.xai_explainer.extract_top_features_rf('pest', pest_input, pest_features)
         
-        return irrigation_shap, pest_shap
+        nutrient_shap = {}
+        if nutrient_input is not None:
+            nutrient_shap = self.xai_explainer.extract_top_features_rf('nutrient', nutrient_input, nut_features)
+            
+        spraying_shap = {}
+        if spray_context:
+            # Rule-based pseudo-SHAP: Calculate "Impact" based on closeness to thresholds
+            # Higher value means it's the primary driver of the decision (positive or negative)
+            w = spray_context.get("wind_speed", 0)
+            h = spray_context.get("humidity", 50)
+            t = spray_context.get("temp", 25)
+            
+            # Distance from safe limits (normalized 0 to 1)
+            # Wind: limit 12
+            spraying_shap["Wind Speed"] = round(abs(w / self.spraying_engine.max_wind_speed), 4)
+            # Humidity: range 40-85
+            h_mid = (self.spraying_engine.min_humidity + self.spraying_engine.max_humidity) / 2
+            h_range = (self.spraying_engine.max_humidity - self.spraying_engine.min_humidity) / 2
+            spraying_shap["Humidity"] = round(abs((h - h_mid) / h_range), 4)
+            # Temp: limit 33
+            spraying_shap["Temperature"] = round(abs(t / self.spraying_engine.max_temp), 4)
+            
+        return irrigation_shap, pest_shap, nutrient_shap, spraying_shap
 
     def generate_human_advisory(self, raw_ml_data, recent_history, language="en"):
         memory_string = "No recent history available."
