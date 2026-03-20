@@ -42,11 +42,11 @@ def test_openrouter():
             elif content or reasoning:
                 print("✅ CONNECTIVITY TEST PASSED (Received response or reasoning)")
             else:
-                print("⚠️ RECEIVED EMPTY CONTENT AND REASONING")
+                print("W RECEIVED EMPTY CONTENT AND REASONING")
         else:
-            print(f"❌ TEST FAILED: {response.text}")
+            print(f"X TEST FAILED: {response.text}")
     except Exception as e:
-        print(f"❌ ERROR DURING TEST: {e}")
+        print(f"X ERROR DURING TEST: {e}")
 
 if __name__ == "__main__":
     test_openrouter()

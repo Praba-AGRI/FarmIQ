@@ -10,11 +10,11 @@ export const recommendationService = {
   },
   
   generateAdvisory: async (fieldId, lat, lon, language = 'en') => {
-    let url = `/fields/${fieldId}/advisory/generate?language=${language}`;
+    let url = `/fields/${fieldId}/dashboard?language=${language}`;
     if (lat !== undefined && lon !== undefined) {
       url += `&lat=${lat}&lon=${lon}`;
     }
-    return api.post(url);
+    return api.get(url);
   },
 
   getTransparencyData: async (fieldId) => {

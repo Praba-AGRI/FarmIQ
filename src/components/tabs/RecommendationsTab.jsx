@@ -47,8 +47,8 @@ const RecommendationsTab = ({ fieldId }) => {
       const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
       const data = response.data;
 
-      setRecommendations(data.recommendations || []);
-      setAiReasoning(data.ai_reasoning_text || '');
+      setRecommendations(data.cards || []);
+      setAiReasoning(data.overall_summary || '');
     } catch (err) {
       console.error('Error fetching recommendations:', err);
       setError('Failed to load real-time AI recommendations. Please ensure your sensors are online.');
@@ -72,7 +72,8 @@ const RecommendationsTab = ({ fieldId }) => {
       }
 
       const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
-      setAiReasoning(response.data.ai_reasoning_text);
+      setAiReasoning(response.data.overall_summary);
+      setRecommendations(response.data.cards || []);
     } catch (err) {
       console.error('Error generating advisory:', err);
       alert('Failed to generate AI advisory. Please try again in 1 minute.');

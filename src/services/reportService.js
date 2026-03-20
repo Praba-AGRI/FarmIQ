@@ -150,31 +150,15 @@ export const reportService = {
    */
   async fetchRecommendationsData(fieldId) {
     try {
-      // const response = await recommendationService.getRecommendations(fieldId);
-      // return response.data;
+      const response = await recommendationService.generateAdvisory(fieldId);
+      const data = response.data;
       
-      // Mock data
       return {
-        crop_stage: 'Vegetative',
-        gdd_value: 1250.0,
-        recommendations: [
-          {
-            title: 'Irrigation',
-            description: 'Irrigate the field with 2 inches of water.',
-            status: 'do_now',
-            explanation: 'Soil moisture is below optimal levels.',
-            timing: 'Within next 6 hours',
-          },
-          {
-            title: 'Nutrients',
-            description: 'Apply nitrogen fertilizer at recommended dosage.',
-            status: 'wait',
-            explanation: 'Wait for 2 days after irrigation.',
-            timing: 'After 2 days',
-          },
-        ],
-        ai_reasoning_text: 'Based on current sensor readings...',
+        crop_stage: data.overall_summary ? data.overall_summary.split('stage')[0] + 'stage' : 'Unknown',
+        recommendations: data.cards || [],
+        ai_reasoning_text: data.overall_summary || 'No advisory summary available.',
       };
+
     } catch (err) {
       console.error('Failed to fetch recommendations data:', err);
       throw err;

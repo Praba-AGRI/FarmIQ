@@ -56,8 +56,8 @@ class AIPipelineService:
         # OpenRouter Initialization
         self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
         self.openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
-        # Gemma is lighter/faster on OpenRouter free-tier and helps reduce rate limiting.
-        self.model_name = "google/gemma-3-27b-it:free"
+        # Revert to the previously-working Gemini free-tier model.
+        self.model_name = "google/gemini-2.0-flash-exp:free"
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:

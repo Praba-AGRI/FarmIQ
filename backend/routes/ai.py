@@ -173,6 +173,13 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         human_advisory = {"overall_summary": "Recommendation generated. Click 'Generate AI Smart Advisory' for a detailed bilingual plan.", "cards": []}
         if not skip_llm:
             human_advisory = ai_pipeline.generate_human_advisory(raw_ml_data, history_summaries, language=language)
+            # If OpenRouter fails (401/429/etc) or JSON parsing returns no cards, keep the UI functional
+            # by falling back to local reasoning templates below.
+            if not isinstance(human_advisory, dict) or not human_advisory.get("cards"):
+                human_advisory = {
+                    "overall_summary": "AI advisory not available right now. Showing locally generated impact analysis.",
+                    "cards": []
+                }
 
         # Merge LLM-specific card data if available
         llm_cards = {c['card_name'].lower(): (c if isinstance(c, dict) else {}) for c in human_advisory.get('cards', []) if isinstance(c, dict)}
@@ -201,6 +208,29 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
         spray_action = "Perfect conditions for spraying." if is_safe_to_spray else "Do not spray today. High wind risk."
         spray_why = f"Live sensors detect wind speeds of {round(sensor_data['wind_speed'], 1)}m/s. Spraying now will cause chemical drift and waste money. Wait until tomorrow morning." if not is_safe_to_spray else "Wind speed and humidity are within the optimal range for effective chemical application."
 
+        # ---- Local fallback reasoning ----
+        # Used when OpenRouter-generated `detailed_reasoning` is missing/unavailable.
+        irr_fallback_reasoning = (
+            f"### Action\n{irr_action}\n\n"
+            f"### Why (Reasoning)\n- {irr_why}\n- Confidence: **{round(irr_prob * 100, 1)}%**\n\n"
+            f"### Timing\nToday"
+        )
+        nut_fallback_reasoning = (
+            f"### Action\n{nut_action}\n\n"
+            f"### Why (Reasoning)\n- {nut_why}\n\n"
+            f"### Timing\nThis week (review results over the next 2-3 days)"
+        )
+        pest_fallback_reasoning = (
+            f"### Action\n{pest_action}\n\n"
+            f"### Why (Reasoning)\n- {pest_why}\n\n"
+            f"### Timing\nMonitor daily"
+        )
+        spray_fallback_reasoning = (
+            f"### Action\n{spray_action}\n\n"
+            f"### Why (Reasoning)\n- {spray_why}\n\n"
+            f"### Timing\nCheck before application"
+        )
+
         recommendations = []
         
         # Mapping for LLM Traffic Light to Schema Status
@@ -219,7 +249,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "status": status_map.get(irr_llm.get('traffic_light'), RecommendationStatus.DO_NOW if irrigation_needed else RecommendationStatus.MONITOR),
             "explanation": irr_llm.get('simple_why', irr_why),
             "timing": "Today" if irrigation_needed else "Next 24h",
-            "ai_reasoning": irr_llm.get('detailed_reasoning'),
+            "ai_reasoning": irr_llm.get('detailed_reasoning') or irr_fallback_reasoning,
             "ml_data": {
                 "confidence": round(irr_prob * 100, 1),
                 "amount_mm": irr_amount_mm,
@@ -236,7 +266,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "status": status_map.get(nut_llm.get('traffic_light'), RecommendationStatus.WAIT),
             "explanation": nut_llm.get('simple_why', nut_why),
             "timing": "Next 2-3 days",
-            "ai_reasoning": nut_llm.get('detailed_reasoning'),
+            "ai_reasoning": nut_llm.get('detailed_reasoning') or nut_fallback_reasoning,
             "ml_data": {
                 "confidence": 85,
                 "prediction": f"N:{round(nut_pred[0],1)}",
@@ -252,7 +282,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "status": status_map.get(pest_llm.get('traffic_light'), RecommendationStatus.GREEN if disease_risk == "Healthy" else RecommendationStatus.DO_NOW),
             "explanation": pest_llm.get('simple_why', pest_why),
             "timing": "Monitor daily",
-            "ai_reasoning": pest_llm.get('detailed_reasoning'),
+            "ai_reasoning": pest_llm.get('detailed_reasoning') or pest_fallback_reasoning,
             "ml_data": {
                 "confidence": 92,
                 "risk_level": disease_risk,
@@ -268,7 +298,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
             "status": status_map.get(spray_llm.get('traffic_light'), RecommendationStatus.MONITOR if is_safe_to_spray else RecommendationStatus.DO_NOW),
             "explanation": spray_llm.get('simple_why', spray_why),
             "timing": "Check before application",
-            "ai_reasoning": spray_llm.get('detailed_reasoning')
+            "ai_reasoning": spray_llm.get('detailed_reasoning') or spray_fallback_reasoning
         })
         
         return {

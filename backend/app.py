@@ -6,7 +6,7 @@ import os
 # Load environment variables FIRST to ensure they are available for singletons
 load_dotenv()
 
-from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market
+from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market, dashboard
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -35,6 +35,7 @@ app.add_middleware(
 # More specific routes (like /{field_id}/chat) need to be matched before generic routes (like /{field_id})
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(farmers.router, prefix="/api/farmers", tags=["Farmers"])
+app.include_router(dashboard.router, prefix="/api", tags=["Dashboard"])
 app.include_router(ai.router, prefix="/api/fields", tags=["AI"])  # Register before fields router
 app.include_router(fields.router, prefix="/api/fields", tags=["Fields"])
 app.include_router(sensors.router, prefix="/api", tags=["Sensors"])

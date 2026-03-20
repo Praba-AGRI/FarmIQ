@@ -21,20 +21,6 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
     recommendation.title === 'Pest Control' ||
     recommendation.title === 'Spraying Conditions';
 
-  // Auto-fetch reasoning on mount ONLY IF NOT ALREADY PROVIDED
-  useEffect(() => {
-    if (supportsReasoning && !reasoning && !loading) {
-      fetchReasoning();
-    }
-  }, [fieldId]);
-
-  // Re-fetch reasoning when language changes ONLY IF we don't have it from the parent
-  useEffect(() => {
-    if (supportsReasoning && !recommendation.ai_reasoning) {
-      fetchReasoning();
-    }
-  }, [globalLanguage]);
-
   const fetchReasoning = async () => {
     try {
       setLoading(true);
