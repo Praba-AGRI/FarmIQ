@@ -54,9 +54,9 @@ class AIPipelineService:
         
         
         # OpenRouter Initialization
-        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
+        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY") or "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"
         self.openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model_name = "google/gemini-2.0-flash-lite-preview-02-05:free"
+        self.model_name = "meta-llama/llama-3.3-70b-instruct:free"
 
     def predict_stage(self, crop_name: str, cumulative_gdd: float):
         try:

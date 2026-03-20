@@ -30,9 +30,9 @@ from typing import List, Dict, Optional
 # OpenRouter Configuration
 # -------------------------------------------------
 # Get API key from environment variable
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY") or "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"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_NAME = "google/gemini-2.0-flash-lite-preview-02-05:free"
+MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free"
 
 # -------------------------------------------------
 # SYSTEM PROMPT (STRICT)
