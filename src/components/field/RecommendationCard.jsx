@@ -105,27 +105,31 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
 
 
         {recommendation.ml_data && (
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <div className="bg-white border-2 border-blue-50 rounded-xl p-3 shadow-sm">
-              <span className="text-[9px] text-blue-400 block mb-1 uppercase tracking-widest font-black">
-                {recommendation.ml_data.amount_mm ? 'Predicted Amount' :
-                  recommendation.ml_data.risk_level !== undefined ? 'Risk Level' : 'Prediction'}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="bg-white border-2 border-primary-50 rounded-2xl p-4 shadow-sm transition-transform hover:scale-[1.02]">
+              <span className="text-[10px] text-primary-400 block mb-1.5 uppercase tracking-widest font-black">
+                {recommendation.ml_data.amount_mm !== undefined ? 'Predicted Amount' :
+                  recommendation.ml_data.risk_level !== undefined ? 'Risk Factor' : 'Prediction'}
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-blue-900">
-                  {recommendation.ml_data.amount_mm || recommendation.ml_data.risk_level || 'N/A'}
+                <span className="text-3xl font-black text-primary-900 italic">
+                  {recommendation.ml_data.amount_mm !== undefined ? recommendation.ml_data.amount_mm : 
+                   recommendation.ml_data.risk_level !== undefined ? recommendation.ml_data.risk_level : 
+                   recommendation.ml_data.prediction || '—'}
                 </span>
-                <span className="text-[10px] font-bold text-blue-600 uppercase">
-                  {recommendation.ml_data.amount_mm ? 'mm' :
+                <span className="text-[11px] font-black text-primary-500 uppercase tracking-tighter">
+                  {recommendation.ml_data.amount_mm !== undefined ? 'mm' :
                     recommendation.ml_data.risk_level !== undefined ? '%' : ''}
                 </span>
               </div>
             </div>
-            <div className="bg-white border-2 border-green-50 rounded-xl p-3 shadow-sm">
-              <span className="text-[9px] text-green-400 block mb-1 uppercase tracking-widest font-black">Confidence</span>
+            <div className="bg-white border-2 border-emerald-50 rounded-2xl p-4 shadow-sm transition-transform hover:scale-[1.02]">
+              <span className="text-[10px] text-emerald-400 block mb-1.5 uppercase tracking-widest font-black">AI Confidence</span>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-green-900">{recommendation.ml_data.confidence}</span>
-                <span className="text-[10px] font-bold text-green-600">%</span>
+                <span className="text-3xl font-black text-emerald-900 italic">
+                  {recommendation.ml_data.confidence !== undefined ? recommendation.ml_data.confidence : '—'}
+                </span>
+                <span className="text-[11px] font-black text-emerald-500 uppercase tracking-tighter">%</span>
               </div>
             </div>
           </div>

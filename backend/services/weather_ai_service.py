@@ -1,7 +1,7 @@
 """
 Weather AI Summary Service
 
-Generates farmer-friendly weather summaries using OpenAI reasoning layer.
+Generates farmer-friendly weather summaries using OpenRouter reasoning layer.
 Provides AI-powered explanations and Q&A for weather-related questions.
 """
 

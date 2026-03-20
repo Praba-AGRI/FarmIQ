@@ -182,14 +182,18 @@ async def reasoning_agri_assistant(
             if response.status_code == 200:
                 result = response.json()
                 return result['choices'][0]['message']['content']
+            elif response.status_code == 429:
+                return f"AI Reasoning is currently busy (Rate Limit). This usually happens on free-tier models. Please try again in 1-2 minutes."
             else:
-                print(f"OpenRouter Error: {response.status_code} - {response.text}")
+                error_info = response.text[:200]
+                print(f"OpenRouter Error: {response.status_code} - {error_info}")
+                return f"Advisory reasoning error (Status {response.status_code}): {error_info}. Please check your configuration."
                 
         except Exception as e:
             print(f"OpenRouter reasoning error on {MODEL_NAME}: {e}")
-            
-        return "Advisory reasoning currently unavailable. Please check your OpenRouter API configuration."
+            return f"Network error connecting to AI Reasoning: {str(e)[:100]}. Please check your internet connection."
 
     except Exception as e:
         print(f"Reasoning layer logic error: {e}")
+        return "Internal logic error in reasoning layer."
 

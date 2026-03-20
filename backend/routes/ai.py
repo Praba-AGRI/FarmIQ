@@ -227,7 +227,7 @@ async def get_ai_agent_output(field_id: str, farmer_id: str, current_user: dict 
                 }
             ],
             "sensor_values": {},
-            "ai_reasoning_text": f"Error generating advisory: {str(e)}. Please ensure your Gemini API key is valid and sensors are sending data.",
+            "ai_reasoning_text": f"Error generating advisory: {str(e)}. Please ensure your OpenRouter API key is valid and sensors are sending data.",
             "logic_metrics": {"et0": 0, "etc": 0, "kc": 0},
             "irrigation_shap": {},
             "pest_shap": {}
@@ -289,7 +289,7 @@ async def generate_manual_advisory(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Manually trigger the Gemini LLM to generate a human-readable advisory.
+    Manually trigger the FarmIQ AI to generate a human-readable advisory.
     Saves rate limits by only calling when the farmer explicitly requests it.
     """
     field = get_field_or_404(field_id, current_user["user_id"])
@@ -430,7 +430,7 @@ async def ai_chat(
         "farming_type": farmer_user.get("farming_type", "conventional")
     }
     
-    # Call the reasoning layer (updated to use Gemini)
+    # Call the reasoning layer (updated to use OpenRouter)
     ai_response = await reasoning_agri_assistant(
         farmer_profile=farmer_profile,
         field_context={"crop": field.crop, "stage": ai_output["crop_stage"], "area_acres": field.area_acres},
