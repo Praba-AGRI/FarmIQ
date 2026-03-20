@@ -78,7 +78,7 @@ async def get_market_advisory(
         if not field_dict:
             raise HTTPException(status_code=404, detail="Field not found")
             
-        from models.schemas import FieldResponse, MarketDemandIndex
+        from models.schemas import FieldResponse, AdvisoryMetric, MarketAdvisoryMetrics
         field = FieldResponse(**field_dict)
         
         # Get farmer location
@@ -87,7 +87,7 @@ async def get_market_advisory(
         farmer_location = user.get("location", "")
         district = farmer_location.split(',')[0].strip() if farmer_location else "Coimbatore"
         
-        # 1. Fetch Agronomic Context (GDD) - with fallback to avoid crashing on DB issues
+        # 1. Fetch Agronomic Context (GDD)
         cumulative_gdd = 800.0 # Default fallback
         try:
             _, gdd, _ = await enrich_telemetry_history(field, farmer_location)
@@ -97,29 +97,44 @@ async def get_market_advisory(
         
         # 2. Fetch Market Context & Forecast
         market_forecast = market_module.get_price_forecast(field.crop, district)
-        econ = market_module.calculate_economics(field.crop, field.area_acres, cumulative_gdd, market_forecast)
-        m_card = econ["market_card"]
+        current_price = market_forecast.get("current_price", 2400)
         
-        # 3. Construct Advisory
+        # 3. Specific Biological & Economic Math (User Requirement)
+        required_gdd = 1400.0 # Standard for Rice maturity
+        maturity_percentage = min(int((cumulative_gdd / required_gdd) * 100), 100)
+        
+        # Specific Yield: 22 quintals per acre
+        est_yield_quintals = round(field.area_acres * 22.0, 2)
+        est_gross_revenue = est_yield_quintals * current_price
+        est_costs = est_gross_revenue * 0.25 
+        est_net_profit = int(est_gross_revenue - est_costs)
+
+        market_demand = "Stable"
+        demand_badge = "MODERATE DEMAND"
+        risk_level = "Verified"
+        risk_badge = "YELLOW RISK"
+        
+        # 4. Construct Nested UI Payload
         return MarketAdvisory(
-            recommended_crop=field.crop,
-            community_density="16.7%", # Static for now, consistent with UI blueprint
-            market_demand=MarketDemandIndex.HIGH_DEMAND if m_card["trend"] == "UP" else MarketDemandIndex.MODERATE_DEMAND,
-            expected_profit=econ["estimated_revenue"],
-            risk_level=m_card["status"],
-            reasoning_summary=m_card["reason"] + f" Estimated yield: {econ['estimated_yield_quintals']} quintals."
+            recommended_crop=field.crop.upper(),
+            metrics=MarketAdvisoryMetrics(
+                community_density=AdvisoryMetric(value="16.7%", tag="REGIONAL"),
+                market_demand=AdvisoryMetric(value=market_demand, tag=demand_badge),
+                est_net_profit=AdvisoryMetric(value=f"₹{est_net_profit:,}", tag=""),
+                risk_assessment=AdvisoryMetric(value=risk_level, tag=risk_badge)
+            ),
+            reasoning_summary=f"Crop is at {maturity_percentage}% maturity. Prices are {market_demand.lower()}. Estimated yield: {est_yield_quintals} quintals."
         )
     except Exception as e:
         print(f"CRITICAL: Market Advisory failure: {e}")
-        # Return a gracefully degraded response instead of 500, to prevent frontend mock takeover if possible.
-        # But if we want the frontend to show its mock data as a last resort, we can re-raise.
-        # Given the user's frustration with mock data, let's return a "Stable" fallback here.
-        from models.schemas import MarketDemandIndex
+        from models.schemas import AdvisoryMetric, MarketAdvisoryMetrics
         return MarketAdvisory(
-            recommended_crop="Analysis Pending",
-            community_density="--",
-            market_demand=MarketDemandIndex.MODERATE_DEMAND,
-            expected_profit=0,
-            risk_level="YELLOW",
-            reasoning_summary=f"Our AI engine is currently refining your regional market data. Please check back in a few minutes. (Error: {str(e)})"
+            recommended_crop="ANALYSIS PENDING",
+            metrics=MarketAdvisoryMetrics(
+                community_density=AdvisoryMetric(value="--", tag="ERROR"),
+                market_demand=AdvisoryMetric(value="--", tag="ERROR"),
+                est_net_profit=AdvisoryMetric(value="₹0", tag=""),
+                risk_assessment=AdvisoryMetric(value="--", tag="ERROR")
+            ),
+            reasoning_summary=f"Analysis engine failed: {str(e)}"
         )

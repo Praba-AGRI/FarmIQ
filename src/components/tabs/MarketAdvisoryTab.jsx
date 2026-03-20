@@ -4,13 +4,14 @@ import marketCommunityService from '../../services/marketCommunityService';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const MOCK_ADVISORY = {
-    recommended_crop: 'Wheat',
-    community_density: '16.7%',
-    market_demand: 'MODERATE_DEMAND',
-    expected_profit: 22000,
-    risk_level: 'MODERATE',
-    reasoning_summary:
-        'Over 60% of farmers in your region are growing maize, creating oversupply risk. Wheat shows stable demand with lower community saturation (16.7%), making it a safer alternative. Market demand for wheat is moderate with stable price trends. Expected profitability is reasonable at current price levels.',
+    recommended_crop: 'WHEAT',
+    metrics: {
+        community_density: { value: "16.7%", tag: "REGIONAL" },
+        market_demand: { value: "Stable", tag: "MODERATE DEMAND" },
+        est_net_profit: { value: "₹22,000", tag: "" },
+        risk_assessment: { value: "Verified", tag: "MODERATE" }
+    },
+    reasoning_summary: "Over 60% of farmers in your region are growing maize, creating oversupply risk. Wheat shows stable demand with lower community saturation (16.7%), making it a safer alternative. Market demand for wheat is moderate with stable price trends. Expected profitability is reasonable at current price levels."
 };
 
 const MarketAdvisoryTab = ({ fieldId }) => {
@@ -89,23 +90,23 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <Users className="text-blue-500 w-5 h-5" />
-                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter bg-blue-50 px-2 py-0.5 rounded">Regional</span>
+                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                            {advisory.metrics.community_density.tag}
+                        </span>
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Community Density</p>
-                    <p className="text-xl font-bold text-gray-800 mt-1">{advisory.community_density}</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{advisory.metrics.community_density.value}</p>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <TrendingUp className="text-purple-500 w-5 h-5" />
-                        <span className={`text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded border ${getDemandColor(advisory.market_demand)}`}>
-                            {advisory.market_demand.replace(/_/g, ' ')}
+                        <span className="text-[10px] font-bold uppercase tracking-tighter px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-100">
+                            {advisory.metrics.market_demand.tag}
                         </span>
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Market Demand</p>
-                    <p className="text-xl font-bold text-gray-800 mt-1">
-                        {advisory.market_demand === 'HIGH_DEMAND' ? 'Excellent' : advisory.market_demand === 'MODERATE_DEMAND' ? 'Stable' : 'Volatile'}
-                    </p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{advisory.metrics.market_demand.value}</p>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
@@ -113,18 +114,18 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                         <DollarSign className="text-emerald-500 w-5 h-5" />
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Est. Net Profit</p>
-                    <p className="text-xl font-bold text-emerald-600 mt-1">₹{Number(advisory.expected_profit).toLocaleString()}</p>
+                    <p className="text-xl font-bold text-emerald-600 mt-1">{advisory.metrics.est_net_profit.value}</p>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                         <AlertCircle className="text-orange-500 w-5 h-5" />
-                        <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${getRiskColor(advisory.risk_level)}`}>
-                            {advisory.risk_level} Risk
+                        <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded border ${getRiskColor(advisory.metrics.risk_assessment.tag)}`}>
+                            {advisory.metrics.risk_assessment.tag} Risk
                         </span>
                     </div>
                     <p className="text-xs text-gray-400 font-medium">Risk Assessment</p>
-                    <p className="text-xl font-bold text-gray-800 mt-1">Verified</p>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{advisory.metrics.risk_assessment.value}</p>
                 </div>
             </div>
 

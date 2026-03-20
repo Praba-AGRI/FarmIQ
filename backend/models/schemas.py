@@ -351,12 +351,19 @@ class ProfitEstimation(BaseModel):
     net_profit: float
     profit_score: int # 0-100
 
+class AdvisoryMetric(BaseModel):
+    value: str
+    tag: str
+
+class MarketAdvisoryMetrics(BaseModel):
+    community_density: AdvisoryMetric
+    market_demand: AdvisoryMetric
+    est_net_profit: AdvisoryMetric
+    risk_assessment: AdvisoryMetric
+
 class MarketAdvisory(BaseModel):
     recommended_crop: str
-    community_density: str
-    market_demand: MarketDemandIndex
-    expected_profit: float
-    risk_level: str
+    metrics: MarketAdvisoryMetrics
     reasoning_summary: str
 
 
