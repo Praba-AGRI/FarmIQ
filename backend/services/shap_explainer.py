@@ -81,10 +81,15 @@ class XAIExplainer:
             
             # Handle multiclass vs single output
             if isinstance(shap_output, list):
-                # For multiclass, take mean across all classes
+                # Legacy SHAP for multiclass
                 feature_importance = np.mean([np.abs(sv).mean(axis=0) for sv in shap_output], axis=0)
             else:
-                feature_importance = np.abs(shap_output).mean(axis=0)
+                if len(shap_output.shape) == 3:
+                     # Modern SHAP for multiclass: (samples, features, classes)
+                     # Average across samples first, then average absolute impact across all classes
+                     feature_importance = np.abs(shap_output).mean(axis=0).mean(axis=1)
+                else:
+                     feature_importance = np.abs(shap_output).mean(axis=0)
                 
             feature_importance = np.array(feature_importance).flatten()
             top_indices = np.argsort(feature_importance)[::-1][:3]
