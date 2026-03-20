@@ -656,20 +656,20 @@ async def get_transparency_data(
     
     return TransparencyData(
         sensor_values={
-            "air_temp": round(temp, 2),
-            "air_humidity": round(humidity, 2),
-            "soil_moisture": current_day.get("soil_moisture", 0),
-            "light_lux": current_day.get("solar_radiation", 0) * 1000,
-            "wind_speed": current_day.get("wind_speed", 0)
+            "air_temp": round(temp, 1),
+            "air_humidity": round(humidity, 1),
+            "soil_moisture": round(current_day.get("soil_moisture", 0), 1),
+            "light_lux": round(current_day.get("solar_radiation", 0) * 1000, 1),
+            "wind_speed": round(current_day.get("wind_speed", 0), 1)
         },
         predicted_stage=predicted_stage,
-        gdd_value=cumulative_gdd,
+        gdd_value=round(cumulative_gdd, 1),
         irrigation_logic=f"Bi-LSTM Confidence: {round(irr_prob * 100, 1)}% - Based on 14-day history",
         pest_risk_factors=[f"{k}: {v}" for k, v in pest_shap.items()],
-        nutrient_recommendations=[f"Apply {round(nut_pred[0])}kg N, {round(nut_pred[1])}kg P, {round(nut_pred[2])}kg K"],
-        et0=current_day.get("et0", 0),
-        etc=current_day.get("etc", 0),
-        kc=current_day.get("kc", 0),
+        nutrient_recommendations=[f"Apply {round(nut_pred[0], 1)}kg N, {round(nut_pred[1], 1)}kg P, {round(nut_pred[2], 1)}kg K"],
+        et0=round(current_day.get("et0", 0), 2),
+        etc=round(current_day.get("etc", 0), 2),
+        kc=round(current_day.get("kc", 0), 2),
         irrigation_shap_weights=irrigation_shap,
         pest_shap_weights=pest_shap,
         nutrient_shap_weights=nutrient_shap,
