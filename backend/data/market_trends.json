@@ -1,0 +1,16 @@
+{
+  "history": [
+    {
+      "commodity": null,
+      "variety": null,
+      "market": null,
+      "modal_price": 0.0,
+      "max_price": 0.0,
+      "min_price": 0.0,
+      "arrival_date": null,
+      "state": null,
+      "district": null,
+      "timestamp": "2026-03-20T21:55:42.981319"
+    }
+  ]
+}

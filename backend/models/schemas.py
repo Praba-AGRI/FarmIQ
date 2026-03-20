@@ -182,6 +182,8 @@ class TransparencyData(BaseModel):
     pest_shap_weights: Optional[dict] = None
     nutrient_shap_weights: Optional[dict] = None
     spraying_shap_weights: Optional[dict] = None
+    market_forecast: Optional[dict] = None
+    economics: Optional[dict] = None
 
 
 # Weather Schemas

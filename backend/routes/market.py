@@ -3,6 +3,7 @@ from routes.auth import get_current_user
 from services.market_service import get_market_price, load_market_prices
 from services.profit_service import calculate_expected_profit
 from services.advisory_service import generate_market_community_advisory
+from services.agronomic_engine import enrich_telemetry_history
 from services.storage import load_json
 from models.schemas import MarketPrice, ProfitEstimation, MarketAdvisory
 from typing import List
@@ -72,29 +73,36 @@ async def get_market_advisory(
     Integrates live data from data.gov.in and economic calculations.
     """
     fields_data = load_json("fields.json")
-    field = next((f for f in fields_data.get("fields", []) if f["field_id"] == field_id), None)
+    field_dict = next((f for f in fields_data.get("fields", []) if f["field_id"] == field_id), None)
     
-    if not field:
+    if not field_dict:
         raise HTTPException(status_code=404, detail="Field not found")
         
-    crop = field.crop
-    state = "Tamil Nadu" # Can be dynamic based on farmer profile
+    # Convert to FieldResponse-like object for enrich_telemetry_history
+    from models.schemas import FieldResponse
+    field = FieldResponse(**field_dict)
     
-    # 1. Fetch real-time market price
-    market_data = market_module.fetch_market_prices(state=state, commodity=crop)
-    price_per_q = market_data.get("modal_price", 2500.0)
+    # Get farmer location
+    users_data = load_json("users.json")
+    user = next((u for u in users_data.get("users", []) if u["user_id"] == current_user["user_id"]), {})
+    farmer_location = user.get("location", "")
+    district = farmer_location.split(',')[0].strip() if farmer_location else "Coimbatore"
     
-    # 2. Calculate Economics
-    # Mocking days to harvest for now, can be derived from GDD/Stage later
-    days_to_harvest = 30 
-    econ = market_module.calculate_economics(crop, field["area_acres"], days_to_harvest, price_per_q)
+    # 1. Fetch Agronomic Context (GDD)
+    _, cumulative_gdd, _ = await enrich_telemetry_history(field, farmer_location)
+    
+    # 2. Fetch Market Context & Forecast
+    market_forecast = market_module.get_price_forecast(field.crop, district)
+    econ = market_module.calculate_economics(field.crop, field.area_acres, cumulative_gdd, market_forecast)
+    m_card = econ["market_card"]
     
     # 3. Construct Advisory
+    from models.schemas import MarketDemandIndex
     return MarketAdvisory(
-        recommended_crop=crop,
-        community_density="Low", # Can be calculated from nearby fields
-        market_demand=MarketDemandIndex.HIGH_DEMAND if price_per_q > 2400 else MarketDemandIndex.MODERATE_DEMAND,
+        recommended_crop=field.crop,
+        community_density="16.7%", # Static for now, consistent with UI blueprint
+        market_demand=MarketDemandIndex.HIGH_DEMAND if m_card["trend"] == "UP" else MarketDemandIndex.MODERATE_DEMAND,
         expected_profit=econ["estimated_revenue"],
-        risk_level="Low" if market_data.get("trend") == "up" else "Moderate",
-        reasoning_summary=f"Market price for {crop} is currently ₹{price_per_q}/quintal at {market_data.get('market', 'Local')} market. {econ['market_advice']}. Estimated yield: {econ['estimated_yield_quintals']} quintals."
+        risk_level=m_card["status"],
+        reasoning_summary=m_card["reason"] + f" Estimated yield: {econ['estimated_yield_quintals']} quintals."
     )

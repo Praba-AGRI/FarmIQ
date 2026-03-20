@@ -2,7 +2,8 @@ def format_dashboard_json(
     irr_prob, irrigation_needed, curr_etc, curr_sm, irr_amount_mm,
     nut_pred, predicted_stage, crop_name, field_size_acres,
     disease_risk, temp, humidity,
-    spray_decision, wind_speed
+    spray_decision, wind_speed,
+    market_data=None
 ):
     """
     Phase 5: The "Dumb Frontend" Mapper
@@ -99,6 +100,22 @@ def format_dashboard_json(
         "timing": "Check before application",
         "ml_data": {"wind_speed": wind_speed}
     })
+
+    # 5. Market & Harvest Mapper (Phase 3 Blueprint)
+    if market_data:
+        m_card = market_data.get("market_card", {})
+        cards.append({
+            "title": "Market & Harvest",
+            "status": m_card.get("status", "green").lower(),
+            "description": m_card.get("action", "Hold to sell"),
+            "explanation": m_card.get("reason", "Prices are stable."),
+            "timing": "Harvest Window" if "Harvest" in m_card.get("action", "") else "Next 14 days",
+            "ml_data": {
+                "price": round(m_card.get("price", 0), 2),
+                "trend": m_card.get("trend", "STABLE"),
+                "forecast": market_data.get("forecast", {})
+            }
+        })
     
     overall_summary = f"{crop_name.capitalize()} is currently in {predicted_stage} stage."
     if any(c["status"] == "do_now" for c in cards):

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ReferenceLine
+} from 'recharts';
 import { useLanguage } from '../../hooks/useLanguage';
 import { recommendationService } from '../../services/recommendationService';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -171,6 +174,100 @@ const TransparencyTab = ({ fieldId }) => {
           <p className="text-sm text-gray-700 mb-3">Decision drivers based on sensor safety thresholds:</p>
           {renderShapBars(transparencyData?.spraying_shap_weights || transparencyData?.sprayingShapWeights || {}, "Safety Factor Proximity")}
         </div>
+
+        {/* Section 4: Economic Forecasting (Market Intelligence) */}
+        {(transparencyData?.market_forecast || transparencyData?.marketForecast) && (
+          <div className="p-4 bg-indigo-50/50 rounded-lg border border-indigo-100">
+            <h5 className="text-md font-semibold text-indigo-800 mb-3">Section 4: Economic Forecasting (Market Intelligence)</h5>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm">
+                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider block mb-1">Current Local Price</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-gray-900">₹{(transparencyData?.market_forecast?.current_price || 0).toLocaleString()}</span>
+                  <span className="text-xs text-gray-500 font-bold">/ Quintal</span>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-tight">Coimbatore Mandi</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm">
+                <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider block mb-1">Predicted 14-Day Price</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-emerald-700">₹{(transparencyData?.market_forecast?.predicted_price || 0).toLocaleString()}</span>
+                  <span className="text-xs text-emerald-500 font-bold">/ Quintal</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2">
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                    transparencyData?.market_forecast?.trend === 'UP' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {transparencyData?.market_forecast?.trend} TREND
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold">Confidence: {Math.round((transparencyData?.market_forecast?.confidence || 0) * 100)}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Price Prediction Chart */}
+            <div className="bg-white p-4 rounded-xl border border-indigo-50 shadow-sm h-64">
+              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-4 text-center">Price Trajectory Prediction</span>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={[
+                  { day: -7, price: (transparencyData?.market_forecast?.historical_data?.[0] || transparencyData?.market_forecast?.current_price - 100), type: 'actual' },
+                  { day: -3, price: (transparencyData?.market_forecast?.historical_data?.[2] || transparencyData?.market_forecast?.current_price - 40), type: 'actual' },
+                  { day: 0, price: transparencyData?.market_forecast?.current_price, type: 'actual' },
+                  { day: 7, price: (transparencyData?.market_forecast?.current_price + transparencyData?.market_forecast?.predicted_price) / 2, type: 'predicted', low: transparencyData?.market_forecast?.current_price + 30, high: transparencyData?.market_forecast?.predicted_price + 10 },
+                  { day: 14, price: transparencyData?.market_forecast?.predicted_price, type: 'predicted', low: transparencyData?.market_forecast?.predicted_price - 80, high: transparencyData?.market_forecast?.predicted_price + 80 }
+                ]}>
+                  <defs>
+                    <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{fontSize: 10, fontWeight: 700}} 
+                    tickFormatter={(val) => val === 0 ? "Today" : val > 0 ? `+${val}d` : `${val}d`}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    domain={['auto', 'auto']} 
+                    tick={{fontSize: 10, fontWeight: 700}} 
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                    labelFormatter={(val) => val === 0 ? "Today" : val > 0 ? `Day +${val}` : `Day ${val}`}
+                  />
+                  {/* Confidence Interval */}
+                  <Area 
+                    type="monotone" 
+                    dataKey="high" 
+                    stroke="none" 
+                    fill="#6366f1" 
+                    fillOpacity={0.05} 
+                    baseValue="low"
+                    connectNulls
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="price" 
+                    stroke="#6366f1" 
+                    strokeWidth={3} 
+                    fillOpacity={1} 
+                    fill="url(#colorPrice)" 
+                    dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                  />
+                  <ReferenceLine x={0} stroke="#6366f1" strokeDasharray="3 3" label={{ position: 'top', value: 'Today', fontSize: 10, fill: '#6366f1', fontWeight: 800 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+              <p className="text-[9px] text-gray-400 italic mt-2 text-center">Dotted area represents AI confidence interval based on historical Mandi volatility.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

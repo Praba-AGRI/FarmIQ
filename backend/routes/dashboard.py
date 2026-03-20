@@ -8,6 +8,7 @@ from services.storage import load_json
 from services.agronomic_engine import enrich_telemetry_history
 from services.ai_pipeline_service import ai_pipeline
 from services.ui_mapper import format_dashboard_json
+from services.market_integration import MarketIntegrationModule
 
 router = APIRouter()
 
@@ -102,6 +103,34 @@ async def get_dashboard_advisory(
         nut_pred, predicted_stage, field.crop, field.area_acres,
         disease_risk, temp, humidity, spray_decision, wind_speed
     )
+
+    # Phase 6: Market Intelligence Sync & Economics
+    try:
+        market_module = MarketIntegrationModule()
+        # Extract district from location string (e.g., "Coimbatore, Tamil Nadu")
+        district = farmer_location.split(',')[0].strip() if farmer_location else None
+        
+        market_forecast = market_module.get_price_forecast(field.crop, district)
+        market_economics = market_module.calculate_economics(
+            field.crop, 
+            field.area_acres, 
+            cumulative_gdd, 
+            market_forecast
+        )
+        
+        # Merge market results into UI response
+        ui_response_payload = format_dashboard_json(
+            irr_prob, irrigation_needed, curr_etc, curr_sm, irr_amount_mm,
+            nut_pred, predicted_stage, field.crop, field.area_acres,
+            disease_risk, temp, humidity, spray_decision, wind_speed,
+            market_data=market_economics
+        )
+        
+        # Add to transparency section
+        ui_response_payload["market_forecast"] = market_forecast
+        ui_response_payload["economics"] = market_economics
+    except Exception as e:
+        print(f"Market Integration skip: {e}")
     
     # Extra context for transparency
     ui_response_payload["cumulative_gdd"] = cumulative_gdd

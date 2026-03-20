@@ -48,11 +48,15 @@ const MarketAdvisoryTab = ({ fieldId }) => {
     };
 
     const getRiskColor = (risk) => {
-        switch (risk) {
-            case 'LOW': return 'bg-green-100 text-green-800';
-            case 'MODERATE': return 'bg-yellow-100 text-yellow-800';
-            case 'HIGH': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+        const r = risk?.toUpperCase();
+        switch (r) {
+            case 'LOW':
+            case 'GREEN': return 'bg-green-100 text-green-800 border-green-200';
+            case 'MODERATE':
+            case 'YELLOW': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'HIGH':
+            case 'RED': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };
 
@@ -129,12 +133,14 @@ const MarketAdvisoryTab = ({ fieldId }) => {
                 <h4 className="text-md font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <Target className="w-5 h-5 text-emerald-600" /> Reasoning Summary
                 </h4>
-                <p className="text-gray-700 leading-relaxed">{advisory.reasoning_summary}</p>
+                <p className="text-gray-700 font-medium leading-relaxed italic border-l-4 border-emerald-400 pl-4 py-1 bg-emerald-50/30 rounded-r-lg">
+                    {advisory.reasoning_summary}
+                </p>
                 <div className="mt-8 pt-6 border-t border-gray-50 flex flex-wrap gap-4">
-                    <button className="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
+                    <button className="px-6 py-2.5 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-700 transition-all shadow-md hover:shadow-emerald-200/50 uppercase tracking-wider">
                         Implement This Recommendation
                     </button>
-                    <button className="px-4 py-2 border border-gray-200 text-gray-600 text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors">
+                    <button className="px-6 py-2.5 border-2 border-gray-100 text-gray-500 text-sm font-black rounded-xl hover:bg-gray-50 transition-all uppercase tracking-wider">
                         Compare Alternatives
                     </button>
                 </div>
