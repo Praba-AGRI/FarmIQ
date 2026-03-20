@@ -42,7 +42,7 @@ async def get_dashboard_advisory(
     if len(history_last_14) == 0:
         # Emergency empty state if DB is completely empty and Weather API failed
         return format_dashboard_json(
-            0, False, 0, 0, 0, [0,0,0], "Unknown", field["crop"], field["area_acres"],
+            0, False, 0, 0, 0, [0,0,0], "Unknown", field.crop, field.area_acres,
             "Normal", 25, 60, "Safe", 5
         )
 
@@ -60,8 +60,8 @@ async def get_dashboard_advisory(
             day.get("et0", 4),
             day.get("etc", 4),
             day.get("stage", predicted_stage),
-            field["crop"],
-            field["area_acres"],
+            field.crop,
+            field.area_acres,
             day.get("solar_radiation", 15) * 1000 # Convert back to lux for the model if needed
         )
         feature_sequence.append(fv)
@@ -70,7 +70,7 @@ async def get_dashboard_advisory(
     
     # Phase 4: Machine Learning Inference
     irr_prob, irrigation_needed, final_lstm_input = ai_pipeline.predict_irrigation(lstm_input)
-    nut_pred, nut_input = ai_pipeline.predict_nutrients(field["crop"], predicted_stage, field["area_acres"])
+    nut_pred, nut_input = ai_pipeline.predict_nutrients(field.crop, predicted_stage, field.area_acres)
     
     # Get current day logic bounds
     current_day = history_last_14[-1]
@@ -84,7 +84,7 @@ async def get_dashboard_advisory(
     season = "Kharif" if 6 <= now.month <= 10 else "Rabi"
     
     disease_risk, pest_input = ai_pipeline.predict_pests(
-        field["crop"], predicted_stage, season, temp, humidity
+        field.crop, predicted_stage, season, temp, humidity
     )
     
     # Spraying rule evaluation
@@ -99,7 +99,7 @@ async def get_dashboard_advisory(
     # Phase 5: Python Dictionary Mapper
     ui_response_payload = format_dashboard_json(
         irr_prob, irrigation_needed, curr_etc, curr_sm, irr_amount_mm,
-        nut_pred, predicted_stage, field["crop"], field["area_acres"],
+        nut_pred, predicted_stage, field.crop, field.area_acres,
         disease_risk, temp, humidity, spray_decision, wind_speed
     )
     

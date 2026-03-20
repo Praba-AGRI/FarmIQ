@@ -111,7 +111,7 @@ async def get_historical_sensor_data(
     
     cursor = sensor_raw_collection.find({
         "sensor_node_id": field.sensor_node_id,
-        "timestamp": {"$gte": start_time, "$lte": end_time}
+        "timestamp": {"$gte": start_time.isoformat(), "$lte": end_time.isoformat()}
     }).sort("timestamp", 1)
     
     filtered_data = await cursor.to_list(length=1000)
@@ -146,7 +146,7 @@ async def get_aggregated_sensor_data(
     
     cursor = sensor_raw_collection.find({
         "sensor_node_id": field.sensor_node_id,
-        "timestamp": {"$gte": start_time, "$lte": end_time}
+        "timestamp": {"$gte": start_time.isoformat(), "$lte": end_time.isoformat()}
     })
     
     filtered_data = await cursor.to_list(length=5000)
