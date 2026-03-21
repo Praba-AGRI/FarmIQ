@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { recommendationService } from '../../services/recommendationService';
+import { sensorService } from '../../services/sensorService';
 import RecommendationCard from '../field/RecommendationCard';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
@@ -16,6 +17,7 @@ const RecommendationsTab = ({ fieldId }) => {
   const [aiLanguage, setAiLanguage] = useState('EN');
   const [generatingAdvisory, setGeneratingAdvisory] = useState(false);
   const [aiReasoningLoading, setAiReasoningLoading] = useState(false);
+  const [hardwareAlert, setHardwareAlert] = useState(null);
 
   const fetchAiReasoning = async () => {
     try {
@@ -83,6 +85,35 @@ const RecommendationsTab = ({ fieldId }) => {
       setAiReasoningEn(data.overall_summary_en || data.overall_summary || '');
       setAiReasoningTa(data.overall_summary_ta || data.overall_summary || '');
       
+      // Phase 6: Hardware Health Telemetry Check
+      try {
+        const sensorRes = await sensorService.getCurrentReadings(fieldId);
+        const sData = sensorRes.data;
+        const lastSeen = new Date(sData.timestamp);
+        const hoursOffline = (Date.now() - lastSeen) / (1000 * 60 * 60);
+        
+        if (hoursOffline > 24) {
+          setHardwareAlert({
+            title: "Node Offline",
+            message: `The edge node has been offline for ${Math.round(hoursOffline)} hours. Last seen: ${lastSeen.toLocaleString()}. Please check power and Wi-Fi.`
+          });
+        } else if (sData.battery_v) {
+          const battVolts = parseFloat(sData.battery_v);
+          if (battVolts < 3.3) { // Below ~15% for typical 3.7V Li-ion
+            setHardwareAlert({
+              title: "Critical Battery",
+              message: `Node battery is extremely low (${battVolts}V). Please recharge immediately to prevent data loss.`
+            });
+          } else {
+            setHardwareAlert(null);
+          }
+        } else {
+          setHardwareAlert(null);
+        }
+      } catch (sensorErr) {
+        console.warn("Could not fetch hardware telemetry");
+      }
+
       // Phase 4: Asynchronous NVIDIA AI injected reasoning
       fetchAiReasoning();
     } catch (err) {
@@ -139,6 +170,24 @@ const RecommendationsTab = ({ fieldId }) => {
 
   return (
     <div className="space-y-6">
+      {hardwareAlert && (
+        <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-xl shadow-sm mb-6 animate-pulse">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h3 className="text-md font-black tracking-wide uppercase text-red-800">Hardware Alert: {hardwareAlert.title}</h3>
+              <div className="mt-1 text-sm font-semibold text-red-700">
+                <p>{hardwareAlert.message}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-bold text-gray-900">{t('recommendations')}</h3>
         <button

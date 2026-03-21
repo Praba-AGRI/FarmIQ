@@ -45,6 +45,8 @@ async def receive_sensor_data(sensor_data: SensorDataCreate):
         "soil_moisture": sensor_data.soil_moisture,
         "light_lux": sensor_data.light_lux,
         "wind_speed": sensor_data.wind_speed if sensor_data.wind_speed is not None else 0.0,
+        "battery_v": sensor_data.battery_v,
+        "wifi_rssi": sensor_data.wifi_rssi,
         "sensor_node_id": sensor_data.sensor_node_id
     }
     
@@ -92,7 +94,9 @@ async def get_current_sensor_readings(
         soil_temp=float(latest_row.get("soil_temp", 0)),
         soil_moisture=float(latest_row.get("soil_moisture", 0)),
         light_lux=float(latest_row.get("light_lux", 0)),
-        wind_speed=float(latest_row.get("wind_speed", 0.0))
+        wind_speed=float(latest_row.get("wind_speed", 0.0)),
+        battery_v=latest_row.get("battery_v"),
+        wifi_rssi=latest_row.get("wifi_rssi")
     )
 
 
@@ -124,7 +128,9 @@ async def get_historical_sensor_data(
             soil_temp=float(row.get("soil_temp", 0)),
             soil_moisture=float(row.get("soil_moisture", 0)),
             light_lux=float(row.get("light_lux", 0)),
-            wind_speed=float(row.get("wind_speed", 0.0))
+            wind_speed=float(row.get("wind_speed", 0.0)),
+            battery_v=row.get("battery_v"),
+            wifi_rssi=row.get("wifi_rssi")
         )
         for row in filtered_data
     ]

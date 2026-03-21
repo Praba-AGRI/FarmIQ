@@ -105,6 +105,8 @@ class SensorDataCreate(BaseModel):
     soil_moisture: float = Field(ge=0, le=100)
     light_lux: float = Field(ge=0)
     wind_speed: Optional[float] = Field(None, ge=0)  # Optional wind speed in km/h
+    battery_v: Optional[float] = None
+    wifi_rssi: Optional[int] = None
     sensor_node_id: str
 
 
@@ -116,6 +118,8 @@ class SensorDataResponse(BaseModel):
     soil_moisture: float
     light_lux: float
     wind_speed: Optional[float] = None
+    battery_v: Optional[float] = None
+    wifi_rssi: Optional[int] = None
 
     class Config:
         from_attributes = True
