@@ -4,7 +4,8 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import pymongo
 
-from database import get_db, get_current_user
+from services.database import get_db
+from routes.auth import get_current_user
 
 router = APIRouter()
 
