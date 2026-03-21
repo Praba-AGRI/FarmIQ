@@ -280,7 +280,7 @@ async def get_ai_reasoning(
             messages=[{"role": "user", "content": system_prompt}],
             temperature=0.2,
             top_p=0.7,
-            max_tokens=1024,
+            max_tokens=4096,
             stream=False
         )
         content = completion.choices[0].message.content.strip()
