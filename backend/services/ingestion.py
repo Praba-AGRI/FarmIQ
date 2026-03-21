@@ -146,6 +146,10 @@ async def update_daily_aggregation(sensor_data: dict):
             "wind_speed_avg": float(np.mean(wind)) if wind else None,
         }
         
+    # Strip _id to prevent MongoDB immutable field exception
+    if '_id' in day_record:
+        del day_record['_id']
+        
     # Upsert back to Mongo
     await daily_telemetry_collection.update_one(
         {"sensor_node_id": node_id, "date": date_str},
