@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Depends, status, Request, Query
 from typing import List, Optional
 import uuid
 
@@ -321,6 +321,8 @@ async def get_ai_reasoning(
 @router.get("/{field_id}/transparency", response_model=TransparencyData)
 async def get_transparency_data(
     field_id: str,
+    lat: Optional[float] = Query(None),
+    lon: Optional[float] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     from services.agronomic_engine import enrich_telemetry_history
@@ -331,7 +333,7 @@ async def get_transparency_data(
     farmer_location = farmer_user.get("location", "") if farmer_user else ""
     
     history_last_14, cumulative_gdd, predicted_stage = await enrich_telemetry_history(
-        field, farmer_location
+        field, farmer_location, lat=lat, lon=lon
     )
     
     if len(history_last_14) == 0:

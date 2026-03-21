@@ -9,8 +9,12 @@ export const recommendationService = {
     return api.get(url);
   },
 
-  getTransparencyData: async (fieldId) => {
-    return api.get(`/fields/${fieldId}/transparency`);
+  getTransparencyData: async (fieldId, lat, lon) => {
+    let url = `/fields/${fieldId}/transparency`;
+    if (lat !== undefined && lon !== undefined) {
+      url += `?lat=${lat}&lon=${lon}`;
+    }
+    return api.get(url);
   },
 
   getAiReasoning: async (fieldId) => {

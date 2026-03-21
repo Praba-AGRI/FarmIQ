@@ -21,7 +21,25 @@ const TransparencyTab = ({ fieldId }) => {
     try {
       setLoading(true);
       setError('');
-      const response = await recommendationService.getTransparencyData(fieldId);
+      
+      let lat, lon;
+      if (navigator.geolocation) {
+        try {
+          const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            });
+          });
+          lat = position.coords.latitude;
+          lon = position.coords.longitude;
+        } catch (geoErr) {
+          console.warn('Geolocation failed for transparency, using backend fallbacks:', geoErr);
+        }
+      }
+
+      const response = await recommendationService.getTransparencyData(fieldId, lat, lon);
       setTransparencyData(response.data);
     } catch (err) {
       console.error('Error fetching transparency data:', err);
