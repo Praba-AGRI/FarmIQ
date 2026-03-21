@@ -19,5 +19,13 @@ export const recommendationService = {
 
   getAiReasoning: async (fieldId) => {
     return api.get(`/fields/${fieldId}/reasoning`);
+  },
+
+  completeAction: async (fieldId, actionType, volume) => {
+    return api.post(`/action/${fieldId}/complete`, {
+        action_type: actionType,
+        volume: volume || 0.0,
+        notes: "Completed via web dashboard UI"
+    });
   }
 };

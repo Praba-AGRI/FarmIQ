@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { RECOMMENDATION_STATUS } from '../../utils/constants';
+import { recommendationService } from '../../services/recommendationService';
 
 const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning, aiLanguage = 'EN' }) => {
   const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const getStatusText = (status) => {
     switch (status) {
@@ -20,6 +23,43 @@ const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning, aiLan
   };
 
   const isCritical = recommendation.status === RECOMMENDATION_STATUS.DO_NOW;
+
+  const handleMarkCompleted = async () => {
+    try {
+      setIsCompleting(true);
+      
+      let volume = 0;
+      if (recommendation.title === 'Irrigation' && recommendation.ml_data?.amount_mm) {
+        volume = recommendation.ml_data.amount_mm;
+      } else if (recommendation.title === 'Nutrients' && recommendation.ml_data?.nitro_kg) {
+        volume = recommendation.ml_data.nitro_kg;
+      }
+
+      await recommendationService.completeAction(fieldId, recommendation.title, volume);
+      setIsCompleted(true);
+    } catch (err) {
+      console.error('Failed to mark action as completed:', err);
+      alert('Failed to log intervention. Please try again.');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  if (isCompleted) {
+    return (
+      <div className="card border-2 shadow-sm rounded-xl overflow-hidden transition-all duration-300 border-emerald-200 bg-emerald-50 content-center h-full p-6 opacity-80">
+        <div className="flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-black text-emerald-800">{recommendation.title} Completed</h3>
+          <p className="text-sm font-bold text-emerald-600">The ML baseline has been instantly recalibrated.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`card border-2 shadow-xl overflow-hidden transition-all duration-300 flex flex-col h-full ${isCritical ? 'border-red-500 bg-red-50/50 ring-2 ring-red-200' : 'border-gray-200 bg-white'}`}>
@@ -164,17 +204,50 @@ const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning, aiLan
           </div>
         )}
 
-        {/* Footer: Timing */}
-        {recommendation.timing && (
-          <div className="mt-auto pt-6 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
-              Expected Impact Window
-            </p>
-            <span className="text-[11px] font-black text-primary-800 bg-primary-100/80 px-4 py-2 rounded-xl border-2 border-primary-200/50 shadow-sm">
-              {recommendation.timing}
-            </span>
+        {/* Footer: Timing & HITL Button */}
+        <div className="mt-auto pt-6 border-t border-gray-100 flex items-center justify-between">
+          <div>
+            {recommendation.timing && (
+              <>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">
+                  Expected Impact Window
+                </p>
+                <span className="text-[11px] font-black text-primary-800 bg-primary-100/80 px-4 py-2 rounded-xl border-2 border-primary-200/50 shadow-sm inline-block">
+                  {recommendation.timing}
+                </span>
+              </>
+            )}
           </div>
-        )}
+          
+          {isCritical && (
+            <button 
+              onClick={handleMarkCompleted}
+              disabled={isCompleting}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black shadow-md text-sm transition-all active:scale-95 ${
+                isCompleting 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-500 border border-emerald-700'
+              }`}
+            >
+              {isCompleting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Logging...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Mark as Completed
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
