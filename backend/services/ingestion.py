@@ -59,6 +59,15 @@ async def validate_and_ingest(sensor_data: dict):
     # 3. Temporal Aggregation (Update DailyTelemetry)
     await update_daily_aggregation(sensor_data)
     
+    # 4. Emergency Thresholds (Proactive Twilio Alerts)
+    moisture = float(sensor_data.get("soil_moisture", 50))
+    if moisture < 20.0:
+        from services.whatsapp_worker import send_emergency_whatsapp
+        # Fire and forget
+        asyncio.create_task(send_emergency_whatsapp(
+            f"🚨 URGENT: Soil moisture critically low ({moisture}%) on Sensor {node_id}. Immediate irrigation required to prevent wilting!"
+        ))
+    
     return True, "Success"
 
 

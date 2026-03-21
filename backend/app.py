@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown()
 
-from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market, dashboard, actions
+from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market, dashboard, actions, webhook
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -70,6 +70,7 @@ app.include_router(advisories.router, prefix="/api/advisories", tags=["Advisorie
 app.include_router(community.router, prefix="/api/community", tags=["Community"])
 app.include_router(market.router, prefix="/api/market", tags=["Market"])
 app.include_router(actions.router, prefix="/api/action", tags=["Actions"])
+app.include_router(webhook.router, prefix="/api/webhook", tags=["Webhook"])
 
 
 @app.get("/health")

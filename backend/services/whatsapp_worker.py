@@ -73,6 +73,30 @@ def generate_morning_briefing():
     except Exception as e:
         print(f"Failed to send Twilio WhatsApp message: {e}")
 
+async def send_emergency_whatsapp(alert_message: str):
+    """
+    Fired asynchronously when sensor thresholds trigger an emergency.
+    """
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+    TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
+    TARGET_FARMER_NUMBER = os.getenv("TARGET_FARMER_NUMBER", "whatsapp:+919360474097")
+    
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+         return
+         
+    try:
+        twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        # Twilio client is synchronous, but we wrap it in a lightweight way or just run in a thread
+        message = twilio_client.messages.create(
+            from_=TWILIO_WHATSAPP_NUMBER,
+            body=alert_message,
+            to=TARGET_FARMER_NUMBER
+        )
+        print(f"Emergency Alert sent: {message.sid}")
+    except Exception as e:
+        print(f"Emergency Alert failed: {e}")
+
 def schedule_whatsapp_briefings(scheduler):
     # Run at 07:00 AM every day
     scheduler.add_job(generate_morning_briefing, 'cron', hour=7, minute=0)
