@@ -11,5 +11,9 @@ export const recommendationService = {
 
   getTransparencyData: async (fieldId) => {
     return api.get(`/fields/${fieldId}/transparency`);
+  },
+
+  getAiReasoning: async (fieldId) => {
+    return api.get(`/fields/${fieldId}/reasoning`);
   }
 };

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { RECOMMENDATION_STATUS } from '../../utils/constants';
 
-const RecommendationCard = ({ recommendation, fieldId }) => {
+const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning }) => {
   const { t } = useLanguage();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const getStatusText = (status) => {
     switch (status) {
@@ -59,7 +60,7 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
 
         {/* THE SIMPLE WHY: Expert Logic simplified */}
         {recommendation.explanation && (
-          <div className="bg-amber-50/70 border-l-4 border-amber-400 rounded-r-xl p-5 mb-6 shadow-sm">
+          <div className="bg-amber-50/70 border-l-4 border-amber-400 rounded-r-xl p-5 mb-4 shadow-sm">
             <div className="flex gap-4 items-start">
               <div className="mt-1 bg-amber-200 p-2 rounded-xl shrink-0">
                 <svg className="w-5 h-5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,6 +76,42 @@ const RecommendationCard = ({ recommendation, fieldId }) => {
             </div>
           </div>
         )}
+
+        {/* AI REASONING DROPDOWN (Injection State) */}
+        <div className="mb-6 border border-gray-100 rounded-xl overflow-hidden bg-white shadow-sm">
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-gray-50 focus:outline-none transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span className="font-bold text-gray-800 text-sm tracking-tight">AI Reasoning Explorer</span>
+            </div>
+            <svg className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100 border-t border-gray-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+            <div className="p-5 bg-gray-50/50">
+              {isLoadingReasoning ? (
+                <div className="animate-pulse flex flex-col gap-2">
+                  <div className="h-2.5 bg-gray-200 rounded w-full"></div>
+                  <div className="h-2.5 bg-gray-200 rounded w-5/6"></div>
+                  <div className="h-2.5 bg-gray-200 rounded w-4/6"></div>
+                </div>
+              ) : recommendation.detailed_reasoning ? (
+                <p className="text-sm font-medium text-gray-700 leading-relaxed whitespace-pre-line transition-opacity duration-700 focus:outline-none">
+                  {recommendation.detailed_reasoning}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">No detailed reasoning available.</p>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* SUBTLE ML DATA (Technical confirmation) */}
         {recommendation.ml_data && (

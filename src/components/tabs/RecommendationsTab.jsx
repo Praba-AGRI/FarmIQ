@@ -13,6 +13,31 @@ const RecommendationsTab = ({ fieldId }) => {
   const [error, setError] = useState('');
   const [aiReasoning, setAiReasoning] = useState('');
   const [generatingAdvisory, setGeneratingAdvisory] = useState(false);
+  const [aiReasoningLoading, setAiReasoningLoading] = useState(false);
+
+  const fetchAiReasoning = async () => {
+    try {
+      setAiReasoningLoading(true);
+      const aiResponse = await recommendationService.getAiReasoning(fieldId);
+      const aiData = aiResponse.data;
+      if (aiData.overall_summary) {
+        setAiReasoning(aiData.overall_summary);
+      }
+      if (aiData.cards) {
+        setRecommendations(prevCards => prevCards.map(card => {
+          const match = aiData.cards.find(c => c.card_name.toLowerCase().includes(card.title.toLowerCase().split(' ')[0]));
+          if (match) {
+            return { ...card, detailed_reasoning: match.detailed_reasoning };
+          }
+          return card;
+        }));
+      }
+    } catch (err) {
+      console.error('AI Reasoning fetch failed:', err);
+    } finally {
+      setAiReasoningLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchRecommendations();
@@ -49,6 +74,9 @@ const RecommendationsTab = ({ fieldId }) => {
 
       setRecommendations(data.cards || []);
       setAiReasoning(data.overall_summary || '');
+      
+      // Phase 4: Asynchronous NVIDIA AI injected reasoning
+      fetchAiReasoning();
     } catch (err) {
       console.error('Error fetching recommendations:', err);
       setError('Failed to load real-time AI recommendations. Please ensure your sensors are online.');
@@ -156,9 +184,19 @@ const RecommendationsTab = ({ fieldId }) => {
           </div>
           
           <div className="prose prose-sm prose-invert max-w-none">
-            <div className="bg-black/20 backdrop-blur-md p-5 rounded-xl border border-white/10 whitespace-pre-line text-emerald-50 leading-relaxed font-medium shadow-inner relative overflow-hidden">
+            <div className="bg-black/20 backdrop-blur-md p-5 rounded-xl border border-white/10 whitespace-pre-line text-emerald-50 leading-relaxed font-medium shadow-inner relative overflow-hidden transition-all duration-700">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-400 to-transparent opacity-50" />
-                {aiReasoning}
+                {aiReasoningLoading ? (
+                  <div className="animate-pulse flex flex-col gap-3 py-1">
+                    <div className="h-3 bg-white/20 rounded w-full"></div>
+                    <div className="h-3 bg-white/20 rounded w-5/6"></div>
+                    <div className="h-3 bg-white/20 rounded w-4/6"></div>
+                  </div>
+                ) : (
+                  <div className="transition-opacity duration-700 ease-in-out opacity-100">
+                    {aiReasoning}
+                  </div>
+                )}
             </div>
           </div>
           <div className="mt-4 flex justify-between items-center bg-black/10 px-4 py-2 rounded-lg border border-white/5">
@@ -175,7 +213,12 @@ const RecommendationsTab = ({ fieldId }) => {
 
       <div className="grid gap-6">
         {recommendations.map((recommendation, index) => (
-          <RecommendationCard key={recommendation.id || index} recommendation={recommendation} fieldId={fieldId} />
+          <RecommendationCard 
+            key={recommendation.id || index} 
+            recommendation={recommendation} 
+            fieldId={fieldId} 
+            isLoadingReasoning={aiReasoningLoading}
+          />
         ))}
       </div>
     </div>

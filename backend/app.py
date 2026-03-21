@@ -2,9 +2,34 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
+from openai import OpenAI
 
 # Load environment variables FIRST to ensure they are available for singletons
 load_dotenv()
+
+# --- APScheduler Background Tasks ---
+scheduler = BackgroundScheduler()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize NVIDIA Client globally on app state
+    NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "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")
+    app.state.nvidia_client = OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=NVIDIA_API_KEY
+    )
+    # Initialize 40-RPM cache shield globally
+    app.state.ai_reasoning_cache = {}
+    
+    # Start background scheduler
+    scheduler.start()
+    from services.whatsapp_worker import schedule_whatsapp_briefings
+    schedule_whatsapp_briefings(scheduler)
+    
+    yield
+    scheduler.shutdown()
 
 from routes import auth, farmers, fields, sensors, ai, weather, advisories, community, market, dashboard
 
@@ -13,6 +38,7 @@ app = FastAPI(
     title="AI Agricultural Decision Support System API",
     description="Backend API for AI-powered agricultural decision support system",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration

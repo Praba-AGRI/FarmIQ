@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from typing import List, Optional
 import uuid
 
@@ -74,6 +74,7 @@ async def get_chat_history(
 async def ai_chat(
     field_id: str,
     message: ChatMessage,
+    request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     field = get_field_or_404(field_id, current_user["user_id"])
@@ -113,16 +114,39 @@ async def ai_chat(
         "history_count": len(history_last_14)
     }
     
-    # 3. Call the reasoning layer
-    ai_response = await reasoning_agri_assistant(
-        farmer_profile=farmer_profile,
-        field_context={"crop": field.crop, "stage": predicted_stage, "area_acres": field.area_acres},
-        ai_agent_output=ai_state_output,
-        approved_knowledge={}, 
-        weather_reference={}, 
-        advisory_history=[],
-        farmer_question=message.message
-    )
+    # 3. Call the reasoning layer (Endpoint B)
+    # Using NVIDIA client for Chat instead of old Gemini prompt inside reasoning_agri_assistant
+    client = getattr(request.app.state, "nvidia_client", None)
+    if not client:
+        # Fallback if accessed via a router test mock
+        from services.whatsapp_worker import get_nvidia_client
+        client = get_nvidia_client()
+        
+    system_prompt = f"""
+    You are the FarmIQ Agronomy Assistant. You are chatting with a farmer about their field.
+    Farmer Profile: {json.dumps(farmer_profile)}
+    Field Context: Crop: {field.crop}, Stage: {predicted_stage}, Area: {field.area_acres} acres.
+    Real-time Sensor Data: {json.dumps(sensor_data)}
+    
+    Answer the user's question directly, clearly, and in a friendly tone. Use local farming terminology if helpful. Language: {farmer_profile['preferred_language']}.
+    """
+    
+    try:
+        completion = client.chat.completions.create(
+            model="meta/llama-3.3-70b-instruct",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message.message}
+            ],
+            temperature=0.5,
+            top_p=0.8,
+            max_tokens=512,
+            stream=False
+        )
+        ai_response = completion.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"NVIDIA API Error in Chat: {e}")
+        ai_response = "Sorry, I am having trouble connecting to my AI brain at the moment."
     
     # 4. Save chat history
     chat_data = load_json("chat_history.json")
@@ -141,6 +165,157 @@ async def ai_chat(
         timestamp=timestamp
     )
 
+
+
+@router.get("/{field_id}/reasoning")
+async def get_ai_reasoning(
+    field_id: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint A: The Dashboard Brain.
+    Generates structured AI reasoning (Tamil/English paragraphs) for the drop-downs.
+    Features a 15-minute 40-RPM Cache Shield.
+    """
+    # 1. Check 40-RPM Cache Shield
+    cache = getattr(request.app.state, "ai_reasoning_cache", {})
+    if field_id in cache:
+        timestamp, cached_data = cache[field_id]
+        if time.time() - timestamp < 900:  # 15 minutes TTL
+            print(f"Cache HIT for {field_id} reasoning. 0 API calls.")
+            return cached_data
+            
+    # 2. Cache Miss: We must generate new AI content
+    print(f"Cache MISS for {field_id}. Generating via NVIDIA...")
+    field = get_field_or_404(field_id, current_user["user_id"])
+    
+    # Farmer Profile
+    users_data = load_json("users.json")
+    farmer_user = next((u for u in users_data.get("users", []) if u.get("user_id") == current_user["user_id"]), None)
+    farmer_location = farmer_user.get("location", "") if farmer_user else ""
+    pref_language = farmer_user.get("preferred_language", "en") if farmer_user else "en"
+    
+    # Get transparency ML data
+    history_last_14, cumulative_gdd, predicted_stage = await enrich_telemetry_history(
+        field, farmer_location
+    )
+    if not history_last_14:
+        raise HTTPException(status_code=404, detail="No sensor history available for AI reasoning.")
+        
+    # Get ML predictions
+    current_day = history_last_14[-1]
+    feature_sequence = [
+        ai_pipeline.construct_feature_vector(
+            day.get("t_avg", 25), day.get("humidity", 60), day.get("soil_moisture", 50),
+            day.get("et0", 4), day.get("etc", 4), day.get("stage", predicted_stage),
+            field.crop, field.area_acres, day.get("solar_radiation", 15) * 1000
+        ) for day in history_last_14[-14:]
+    ]
+    # Pad if needed
+    while len(feature_sequence) < 14:
+        feature_sequence.insert(0, feature_sequence[0])
+        
+    lstm_input = np.array(feature_sequence)
+    irr_prob, irrigation_needed, final_lstm_input = ai_pipeline.predict_irrigation(lstm_input)
+    
+    now = datetime.datetime.now()
+    season = "Kharif" if 6 <= now.month <= 10 else "Rabi"
+    temp = current_day.get("t_avg", 25)
+    humidity = current_day.get("humidity", 60)
+    
+    disease_risk, pest_input = ai_pipeline.predict_pests(
+        field.crop, predicted_stage, season, temp, humidity
+    )
+    
+    nut_pred, nutrient_input = ai_pipeline.predict_nutrients(
+        field.crop, predicted_stage, field.area_acres
+    )
+
+    raw_ml_data = {
+        "crop": field.crop,
+        "stage": predicted_stage,
+        "current_temp": temp,
+        "current_humidity": humidity,
+        "soil_moisture": current_day.get("soil_moisture", 50),
+        "irrigation_prob": float(irr_prob),
+        "disease_risk": disease_risk,
+        "nutrient_npk": [float(nut_pred[0]), float(nut_pred[1]), float(nut_pred[2])]
+    }
+    
+    lang_instruction = "English" if pref_language == "en" else "Tamil"
+    
+    system_prompt = f"""
+    You are the FarmIQ Agronomy Engine, an expert agricultural AI for smallholder farmers. 
+    Analyze the raw ML data and output a STRICT JSON response in {lang_instruction}.
+    Do NOT output markdown code blocks (no ```json). Output ONLY the raw JSON string.
+
+    === CURRENT REAL-TIME ML DATA ===
+    {json.dumps(raw_ml_data, indent=2)}
+
+    JSON SCHEMA REQUIREMENTS:
+    {{
+      "overall_summary": "A 2-sentence high-level summary of the entire farm's current status and urgent needs.",
+      "cards": [
+        {{
+          "card_name": "Irrigation",
+          "traffic_light": "RED|YELLOW|GREEN",
+          "main_action": "The simple, imperative command (e.g., Irrigate 45 mins).",
+          "simple_why": "One sentence explaining why based on weather/soil.",
+          "detailed_reasoning": "Explain the Bi-LSTM reasoning."
+        }},
+        {{
+          "card_name": "Nutrients",
+          "traffic_light": "RED|YELLOW|GREEN",
+          "main_action": "Imperative fertilizer command.",
+          "simple_why": "One sentence why based on crop stage.",
+          "detailed_reasoning": "Deep technical explanation of nutrient needs."
+        }},
+        {{
+          "card_name": "Pest Management",
+          "traffic_light": "RED|YELLOW|GREEN",
+          "main_action": "Risk status or treatment command.",
+          "simple_why": "One sentence why based on environment.",
+          "detailed_reasoning": "Technical breakdown of pest risk factors."
+        }},
+        {{
+          "card_name": "Spraying Conditions",
+          "traffic_light": "RED|YELLOW|GREEN",
+          "main_action": "Safety decision (Spray/Do Not Spray).",
+          "simple_why": "One sentence why based on wind/humidity sensors.",
+          "detailed_reasoning": "Analysis of drift risks and cost impact."
+        }}
+      ]
+    }}
+    """
+    
+    client = request.app.state.nvidia_client
+    try:
+        completion = client.chat.completions.create(
+            model="meta/llama-3.3-70b-instruct",
+            messages=[{"role": "user", "content": system_prompt}],
+            temperature=0.2,
+            top_p=0.7,
+            max_tokens=1024,
+            stream=False
+        )
+        content = completion.choices[0].message.content.strip()
+        # Clean markdown wrappers if any
+        if content.startswith("```json"):
+            content = content[7:-3].strip()
+        elif content.startswith("```"):
+            content = content[3:-3].strip()
+            
+        json_data = json.loads(content)
+        
+        # 3. Save to Cache Shield
+        request.app.state.ai_reasoning_cache[field_id] = (time.time(), json_data)
+        
+        return json_data
+        
+    except Exception as e:
+        print(f"NVIDIA API Error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate AI reasoning")
 
 
 @router.get("/{field_id}/transparency", response_model=TransparencyData)
