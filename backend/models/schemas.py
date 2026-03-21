@@ -370,6 +370,16 @@ class MarketAdvisory(BaseModel):
     metrics: MarketAdvisoryMetrics
     reasoning_summary: str
 
+class CropAlternative(BaseModel):
+    crop_name: str
+    est_water_liters: float
+    est_net_profit: float
+    reasoning: str
+
+class CompareAlternativesResponse(BaseModel):
+    current_crop: CropAlternative
+    alternative_crop: CropAlternative
+
 
 
 

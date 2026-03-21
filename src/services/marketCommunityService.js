@@ -41,6 +41,11 @@ const marketCommunityService = {
         return response.data;
     },
 
+    getCompareAlternatives: async (fieldId) => {
+        const response = await api.get(`/market/compare-alternatives/${fieldId}`);
+        return response.data;
+    },
+
     postChatMessage: async (text, crop = '') => {
         const response = await api.post('/community/chat', { text, crop });
         return response.data;

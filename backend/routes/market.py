@@ -138,3 +138,21 @@ async def get_market_advisory(
             ),
             reasoning_summary=f"Analysis engine failed: {str(e)}"
         )
+
+@router.get("/compare-alternatives/{field_id}")
+async def compare_alternatives(field_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Phase 6 Bio-Economic Scaling API
+    Compares long term water usage and profitability with alternatives.
+    """
+    fields_data = load_json("fields.json")
+    field_dict = next((f for f in fields_data.get("fields", []) if f["field_id"] == field_id), None)
+    
+    if not field_dict:
+        raise HTTPException(status_code=404, detail="Field not found")
+        
+    farmer_location = current_user.get("location", "Coimbatore, Tamil Nadu")
+    district = farmer_location.split(',')[0].strip() if farmer_location else "Coimbatore"
+    
+    from services.predictive_planning import get_crop_comparison
+    return get_crop_comparison(field_id, field_dict["crop"], field_dict["area_acres"], district)
