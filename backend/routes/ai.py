@@ -246,46 +246,25 @@ async def get_ai_reasoning(
     lang_instruction = "English" if pref_language == "en" else "Tamil"
     
     system_prompt = f"""
-    You are the FarmIQ Agronomy Engine, an expert agricultural AI for smallholder farmers. 
-    Analyze the raw ML data and output a STRICT JSON response in {lang_instruction}.
-    Do NOT output markdown code blocks (no ```json). Output ONLY the raw JSON string.
+    You are the Chief Agronomist for FarmIQ, a state-of-the-art precision agriculture system. 
+    Your job is to translate raw IoT sensor data and ML predictions into expert, highly specific, and actionable advice for a farmer in {lang_instruction}.
+    
+    CRITICAL RULES FOR REASONING:
+    1. USE THE EXACT NUMBERS: Never use generic phrases like "moisture is low". You must cite the specific numbers provided in the payload (e.g., "Soil moisture has dropped to 50.0% while atmospheric demand is 6.8mm").
+    2. EXPLAIN THE BIOLOGY: Connect the sensor data to the specific crop and its current growth stage. Explain *why* the crop needs this action right now. (e.g., "Rice in the flowering stage requires optimal hydration to ensure proper grain filling. Water stress right now will permanently reduce your final yield.")
+    3. NO ROBOT SPEAK: Never say "The ML model analyzed..." or "The Bi-LSTM predicted...". Farmers do not care about the algorithm; they care about the farm. Speak directly about the soil, weather, and plants.
+    4. TONE: Authoritative, empathetic, clear, and scientifically accurate.
 
     === CURRENT REAL-TIME ML DATA ===
     {json.dumps(raw_ml_data, indent=2)}
 
-    JSON SCHEMA REQUIREMENTS:
+    OUTPUT FORMAT:
+    Return ONLY a valid JSON object in {lang_instruction}. Do not include any text outside the JSON brackets.
     {{
-      "overall_summary": "A 2-sentence high-level summary of the entire farm's current status and urgent needs.",
-      "cards": [
-        {{
-          "card_name": "Irrigation",
-          "traffic_light": "RED|YELLOW|GREEN",
-          "main_action": "The simple, imperative command (e.g., Irrigate 45 mins).",
-          "simple_why": "One sentence explaining why based on weather/soil.",
-          "detailed_reasoning": "Explain the Bi-LSTM reasoning."
-        }},
-        {{
-          "card_name": "Nutrients",
-          "traffic_light": "RED|YELLOW|GREEN",
-          "main_action": "Imperative fertilizer command.",
-          "simple_why": "One sentence why based on crop stage.",
-          "detailed_reasoning": "Deep technical explanation of nutrient needs."
-        }},
-        {{
-          "card_name": "Pest Management",
-          "traffic_light": "RED|YELLOW|GREEN",
-          "main_action": "Risk status or treatment command.",
-          "simple_why": "One sentence why based on environment.",
-          "detailed_reasoning": "Technical breakdown of pest risk factors."
-        }},
-        {{
-          "card_name": "Spraying Conditions",
-          "traffic_light": "RED|YELLOW|GREEN",
-          "main_action": "Safety decision (Spray/Do Not Spray).",
-          "simple_why": "One sentence why based on wind/humidity sensors.",
-          "detailed_reasoning": "Analysis of drift risks and cost impact."
-        }}
-      ]
+      "overall_summary": "A punchy, 2-sentence executive summary of the field's health, urgent risks, and required actions for today.",
+      "irrigation_reasoning": "A 3-sentence agronomic explanation of exactly why water is/isn't needed today, citing specific ETc and moisture numbers.",
+      "nutrient_reasoning": "A 3-sentence explanation linking the specific NPK requirements to the current biological growth stage.",
+      "pest_reasoning": "A 2-sentence risk assessment based on the current temperature and humidity micro-climate."
     }}
     """
     
@@ -308,10 +287,20 @@ async def get_ai_reasoning(
             
         json_data = json.loads(content)
         
-        # 3. Save to Cache Shield
-        request.app.state.ai_reasoning_cache[field_id] = (time.time(), json_data)
+        # Map the new flat JSON into the generic Cards format for the frontend
+        mapped_json = {
+            "overall_summary": json_data.get("overall_summary", ""),
+            "cards": [
+                {"card_name": "Irrigation", "detailed_reasoning": json_data.get("irrigation_reasoning", "")},
+                {"card_name": "Nutrients", "detailed_reasoning": json_data.get("nutrient_reasoning", "")},
+                {"card_name": "Pest", "detailed_reasoning": json_data.get("pest_reasoning", "")}
+            ]
+        }
         
-        return json_data
+        # 3. Save to Cache Shield
+        request.app.state.ai_reasoning_cache[field_id] = (time.time(), mapped_json)
+        
+        return mapped_json
         
     except Exception as e:
         print(f"NVIDIA API Error: {e}")
