@@ -21,7 +21,9 @@ async def validate_and_ingest(sensor_data: dict):
     rejection_reason = ""
     
     if len(history) >= 10:
-        for key in ["air_temp", "air_humidity", "soil_temp", "soil_moisture", "light_lux"]:
+        # We exclude soil_moisture and light_lux from Z-Score because they can change 
+        # dramatically (e.g. pulling sensor out of soil, turning off a light).
+        for key in ["air_temp", "air_humidity", "soil_temp"]:
             val = sensor_data.get(key)
             if val is None:
                 continue
