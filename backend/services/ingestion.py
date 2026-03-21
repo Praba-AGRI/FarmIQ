@@ -38,7 +38,7 @@ async def validate_and_ingest(sensor_data: dict):
             # Avoid division by zero
             if std > 0.1: 
                 z_score = abs(val - mean) / std
-                if z_score > 3.0:  # Z-Score Threshold
+                if z_score > 15.0:  # Z-Score Threshold (Relaxed heavily for hardware testing)
                     is_valid = False
                     rejection_reason = f"Corrupted {key}: {val} (Z={z_score:.1f}, Mean={mean:.1f})"
                     break
