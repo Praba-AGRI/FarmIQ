@@ -269,7 +269,9 @@ async def get_ai_reasoning(
       "nutrients_en": "A 3-sentence explanation in English linking the specific NPK requirements to the current biological growth stage.",
       "nutrients_ta": "The exact same nutrient explanation translated into clear agricultural Tamil.",
       "pest_en": "A 2-sentence risk assessment in English based on the current temperature and humidity micro-climate.",
-      "pest_ta": "The exact same pest explanation translated into clear agricultural Tamil."
+      "pest_ta": "The exact same pest explanation translated into clear agricultural Tamil.",
+      "spray_en": "A 2-sentence reasoning in English explaining if current wind speed and temperature make it safe to spray.",
+      "spray_ta": "The exact same spraying explanation translated into clear agricultural Tamil."
     }}
     """
     
@@ -313,6 +315,11 @@ async def get_ai_reasoning(
                     "card_name": "Pest", 
                     "detailed_reasoning_en": json_data.get("pest_en", ""),
                     "detailed_reasoning_ta": json_data.get("pest_ta", "")
+                },
+                {
+                    "card_name": "Spraying", 
+                    "detailed_reasoning_en": json_data.get("spray_en", ""),
+                    "detailed_reasoning_ta": json_data.get("spray_ta", "")
                 }
             ]
         }

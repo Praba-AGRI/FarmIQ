@@ -57,3 +57,15 @@ async def whatsapp_webhook(request: Request, db = Depends(get_db)):
         resp.message(f"FarmIQ: Unrecognized command. Reply 'DONE' to log your irrigation. 🌱")
         
     return str(resp)
+
+@router.get("/test-whatsapp")
+async def test_whatsapp():
+    """
+    Test endpoint to manually trigger a WhatsApp message and verify Twilio configuration.
+    """
+    from services.whatsapp_worker import send_emergency_whatsapp
+    try:
+        await send_emergency_whatsapp("🧪 FarmIQ Diagnostic: This is a proactive test alert. If you receive this, your Twilio webhook is configured correctly!")
+        return {"status": "success", "message": "Test WhatsApp triggered. Check your phone within 10 seconds."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
