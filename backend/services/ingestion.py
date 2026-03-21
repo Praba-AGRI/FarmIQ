@@ -115,6 +115,10 @@ async def update_daily_aggregation(sensor_data: dict):
             }
         }
         
+    # Retroactively patch missing schema fields
+    if "hourly_data" not in day_record:
+        day_record["hourly_data"] = {}
+        
     # Append the reading to the specific hour
     if hour_str not in day_record["hourly_data"]:
         day_record["hourly_data"][hour_str] = []
