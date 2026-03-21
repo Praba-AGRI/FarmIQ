@@ -235,12 +235,12 @@ async def get_ai_reasoning(
     raw_ml_data = {
         "crop": field.crop,
         "stage": predicted_stage,
-        "current_temp": temp,
-        "current_humidity": humidity,
+        "current_temp": round(temp, 1),
+        "current_humidity": round(humidity, 1),
         "soil_moisture": current_day.get("soil_moisture", 50),
-        "irrigation_prob": float(irr_prob),
+        "irrigation_prob": round(float(irr_prob), 2),
         "disease_risk": disease_risk,
-        "nutrient_npk": [float(nut_pred[0]), float(nut_pred[1]), float(nut_pred[2])]
+        "nutrient_npk": [round(float(nut_pred[0]), 1), round(float(nut_pred[1]), 1), round(float(nut_pred[2]), 1)]
     }
     
     lang_instruction = "English" if pref_language == "en" else "Tamil"
