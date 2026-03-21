@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { RECOMMENDATION_STATUS } from '../../utils/constants';
 
-const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning }) => {
+const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning, aiLanguage = 'EN' }) => {
   const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -102,9 +102,11 @@ const RecommendationCard = ({ recommendation, fieldId, isLoadingReasoning }) => 
                   <div className="h-2.5 bg-gray-200 rounded w-5/6"></div>
                   <div className="h-2.5 bg-gray-200 rounded w-4/6"></div>
                 </div>
-              ) : recommendation.detailed_reasoning ? (
+              ) : recommendation.detailed_reasoning_en || recommendation.detailed_reasoning ? (
                 <p className="text-sm font-medium text-gray-700 leading-relaxed whitespace-pre-line transition-opacity duration-700 focus:outline-none">
-                  {recommendation.detailed_reasoning}
+                  {aiLanguage === 'EN' 
+                    ? (recommendation.detailed_reasoning_en || recommendation.detailed_reasoning)
+                    : (recommendation.detailed_reasoning_ta || recommendation.detailed_reasoning)}
                 </p>
               ) : (
                 <p className="text-sm text-gray-500 italic">No detailed reasoning available.</p>

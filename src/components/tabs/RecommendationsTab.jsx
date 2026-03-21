@@ -11,7 +11,9 @@ const RecommendationsTab = ({ fieldId }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiReasoning, setAiReasoning] = useState('');
+  const [aiReasoningEn, setAiReasoningEn] = useState('');
+  const [aiReasoningTa, setAiReasoningTa] = useState('');
+  const [aiLanguage, setAiLanguage] = useState('EN');
   const [generatingAdvisory, setGeneratingAdvisory] = useState(false);
   const [aiReasoningLoading, setAiReasoningLoading] = useState(false);
 
@@ -20,14 +22,19 @@ const RecommendationsTab = ({ fieldId }) => {
       setAiReasoningLoading(true);
       const aiResponse = await recommendationService.getAiReasoning(fieldId);
       const aiData = aiResponse.data;
-      if (aiData.overall_summary) {
-        setAiReasoning(aiData.overall_summary);
+      if (aiData.overall_summary_en) {
+        setAiReasoningEn(aiData.overall_summary_en);
+        setAiReasoningTa(aiData.overall_summary_ta);
       }
       if (aiData.cards) {
         setRecommendations(prevCards => prevCards.map(card => {
           const match = aiData.cards.find(c => c.card_name.toLowerCase().includes(card.title.toLowerCase().split(' ')[0]));
           if (match) {
-            return { ...card, detailed_reasoning: match.detailed_reasoning };
+            return { 
+                ...card, 
+                detailed_reasoning_en: match.detailed_reasoning_en,
+                detailed_reasoning_ta: match.detailed_reasoning_ta 
+            };
           }
           return card;
         }));
@@ -73,7 +80,8 @@ const RecommendationsTab = ({ fieldId }) => {
       const data = response.data;
 
       setRecommendations(data.cards || []);
-      setAiReasoning(data.overall_summary || '');
+      setAiReasoningEn(data.overall_summary_en || '');
+      setAiReasoningTa(data.overall_summary_ta || '');
       
       // Phase 4: Asynchronous NVIDIA AI injected reasoning
       fetchAiReasoning();
@@ -100,7 +108,8 @@ const RecommendationsTab = ({ fieldId }) => {
       }
 
       const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
-      setAiReasoning(response.data.overall_summary);
+      setAiReasoningEn(response.data.overall_summary_en);
+      setAiReasoningTa(response.data.overall_summary_ta);
       setRecommendations(response.data.cards || []);
     } catch (err) {
       console.error('Error generating advisory:', err);
@@ -122,7 +131,7 @@ const RecommendationsTab = ({ fieldId }) => {
     return <div className="text-center py-8 text-gray-600">No recommendations available</div>;
   }
 
-  const isPlaceholder = !aiReasoning || aiReasoning.includes('Click \'Generate\'');
+  const isPlaceholder = !aiReasoningEn || aiReasoningEn.includes('Click \'Generate\'');
 
   return (
     <div className="space-y-6">
@@ -153,34 +162,44 @@ const RecommendationsTab = ({ fieldId }) => {
               </div>
             </div>
             
-            {isPlaceholder && (
-              <button
-                onClick={handleGenerateAdvisory}
-                disabled={generatingAdvisory}
-                className={`px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-xl flex items-center gap-2 group/btn ${
-                  generatingAdvisory 
-                    ? 'bg-emerald-900/50 text-emerald-400 cursor-not-allowed border border-emerald-700/50' 
-                    : 'bg-white text-emerald-700 hover:bg-emerald-50 active:scale-95 border border-transparent'
-                }`}
-              >
-                {generatingAdvisory ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Processing Data...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Generate AI Smart Advisory</span>
-                    <svg className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {(!isPlaceholder || generatingAdvisory) && (
+                <button 
+                  onClick={() => setAiLanguage(aiLanguage === 'EN' ? 'TA' : 'EN')}
+                  className="bg-white/10 hover:bg-white/20 active:scale-95 text-white text-[11px] font-bold px-4 py-2 rounded-xl backdrop-blur-md transition-all border border-white/20 shadow-sm"
+                >
+                  Switch to {aiLanguage === 'EN' ? 'தமிழ்' : 'English'}
+                </button>
+              )}
+              {isPlaceholder && (
+                <button
+                  onClick={handleGenerateAdvisory}
+                  disabled={generatingAdvisory}
+                  className={`px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-xl flex items-center gap-2 group/btn ${
+                    generatingAdvisory 
+                      ? 'bg-emerald-900/50 text-emerald-400 cursor-not-allowed border border-emerald-700/50' 
+                      : 'bg-white text-emerald-700 hover:bg-emerald-50 active:scale-95 border border-transparent'
+                  }`}
+                >
+                  {generatingAdvisory ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Processing Data...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Generate AI Smart Advisory</span>
+                      <svg className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="prose prose-sm prose-invert max-w-none">
@@ -194,7 +213,7 @@ const RecommendationsTab = ({ fieldId }) => {
                   </div>
                 ) : (
                   <div className="transition-opacity duration-700 ease-in-out opacity-100">
-                    {aiReasoning}
+                    {aiLanguage === 'EN' ? aiReasoningEn : aiReasoningTa}
                   </div>
                 )}
             </div>
@@ -218,6 +237,7 @@ const RecommendationsTab = ({ fieldId }) => {
             recommendation={recommendation} 
             fieldId={fieldId} 
             isLoadingReasoning={aiReasoningLoading}
+            aiLanguage={aiLanguage}
           />
         ))}
       </div>

@@ -247,24 +247,29 @@ async def get_ai_reasoning(
     
     system_prompt = f"""
     You are the Chief Agronomist for FarmIQ, a state-of-the-art precision agriculture system. 
-    Your job is to translate raw IoT sensor data and ML predictions into expert, highly specific, and actionable advice for a farmer in {lang_instruction}.
+    Your job is to translate raw IoT sensor data and ML predictions into expert, highly specific, and actionable advice for a farmer.
     
     CRITICAL RULES FOR REASONING:
     1. USE THE EXACT NUMBERS: Never use generic phrases like "moisture is low". You must cite the specific numbers provided in the payload (e.g., "Soil moisture has dropped to 50.0% while atmospheric demand is 6.8mm").
     2. EXPLAIN THE BIOLOGY: Connect the sensor data to the specific crop and its current growth stage. Explain *why* the crop needs this action right now. (e.g., "Rice in the flowering stage requires optimal hydration to ensure proper grain filling. Water stress right now will permanently reduce your final yield.")
     3. NO ROBOT SPEAK: Never say "The ML model analyzed..." or "The Bi-LSTM predicted...". Farmers do not care about the algorithm; they care about the farm. Speak directly about the soil, weather, and plants.
-    4. TONE: Authoritative, empathetic, clear, and scientifically accurate.
+    4. BILINGUAL OUTPUT: You must provide the exact same reasoning in both English and natural, conversational Tamil.
+    5. TONE: Authoritative, empathetic, clear, and scientifically accurate.
 
     === CURRENT REAL-TIME ML DATA ===
     {json.dumps(raw_ml_data, indent=2)}
 
     OUTPUT FORMAT:
-    Return ONLY a valid JSON object in {lang_instruction}. Do not include any text outside the JSON brackets.
+    Return ONLY a valid JSON object. Do not include any text outside the JSON brackets.
     {{
-      "overall_summary": "A punchy, 2-sentence executive summary of the field's health, urgent risks, and required actions for today.",
-      "irrigation_reasoning": "A 3-sentence agronomic explanation of exactly why water is/isn't needed today, citing specific ETc and moisture numbers.",
-      "nutrient_reasoning": "A 3-sentence explanation linking the specific NPK requirements to the current biological growth stage.",
-      "pest_reasoning": "A 2-sentence risk assessment based on the current temperature and humidity micro-climate."
+      "overall_summary_en": "A punchy, 2-sentence executive summary of the field's health, urgent risks, and required actions for today in English.",
+      "overall_summary_ta": "The exact same executive summary translated into clear agricultural Tamil.",
+      "irrigation_en": "A 3-sentence agronomic explanation in English of exactly why water is/isn't needed today, citing specific ETc and moisture numbers.",
+      "irrigation_ta": "The exact same irrigation explanation translated into clear agricultural Tamil.",
+      "nutrients_en": "A 3-sentence explanation in English linking the specific NPK requirements to the current biological growth stage.",
+      "nutrients_ta": "The exact same nutrient explanation translated into clear agricultural Tamil.",
+      "pest_en": "A 2-sentence risk assessment in English based on the current temperature and humidity micro-climate.",
+      "pest_ta": "The exact same pest explanation translated into clear agricultural Tamil."
     }}
     """
     
@@ -287,13 +292,25 @@ async def get_ai_reasoning(
             
         json_data = json.loads(content)
         
-        # Map the new flat JSON into the generic Cards format for the frontend
         mapped_json = {
-            "overall_summary": json_data.get("overall_summary", ""),
+            "overall_summary_en": json_data.get("overall_summary_en", ""),
+            "overall_summary_ta": json_data.get("overall_summary_ta", ""),
             "cards": [
-                {"card_name": "Irrigation", "detailed_reasoning": json_data.get("irrigation_reasoning", "")},
-                {"card_name": "Nutrients", "detailed_reasoning": json_data.get("nutrient_reasoning", "")},
-                {"card_name": "Pest", "detailed_reasoning": json_data.get("pest_reasoning", "")}
+                {
+                    "card_name": "Irrigation", 
+                    "detailed_reasoning_en": json_data.get("irrigation_en", ""),
+                    "detailed_reasoning_ta": json_data.get("irrigation_ta", "")
+                },
+                {
+                    "card_name": "Nutrients", 
+                    "detailed_reasoning_en": json_data.get("nutrients_en", ""),
+                    "detailed_reasoning_ta": json_data.get("nutrients_ta", "")
+                },
+                {
+                    "card_name": "Pest", 
+                    "detailed_reasoning_en": json_data.get("pest_en", ""),
+                    "detailed_reasoning_ta": json_data.get("pest_ta", "")
+                }
             ]
         }
         
