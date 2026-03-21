@@ -80,8 +80,8 @@ const RecommendationsTab = ({ fieldId }) => {
       const data = response.data;
 
       setRecommendations(data.cards || []);
-      setAiReasoningEn(data.overall_summary_en || '');
-      setAiReasoningTa(data.overall_summary_ta || '');
+      setAiReasoningEn(data.overall_summary_en || data.overall_summary || '');
+      setAiReasoningTa(data.overall_summary_ta || data.overall_summary || '');
       
       // Phase 4: Asynchronous NVIDIA AI injected reasoning
       fetchAiReasoning();
@@ -100,7 +100,11 @@ const RecommendationsTab = ({ fieldId }) => {
       if (navigator.geolocation) {
         try {
           const position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 0
+            });
           });
           lat = position.coords.latitude;
           lon = position.coords.longitude;
@@ -108,8 +112,8 @@ const RecommendationsTab = ({ fieldId }) => {
       }
 
       const response = await recommendationService.generateAdvisory(fieldId, lat, lon, globalLanguage);
-      setAiReasoningEn(response.data.overall_summary_en);
-      setAiReasoningTa(response.data.overall_summary_ta);
+      setAiReasoningEn(response.data.overall_summary_en || response.data.overall_summary || '');
+      setAiReasoningTa(response.data.overall_summary_ta || response.data.overall_summary || '');
       setRecommendations(response.data.cards || []);
     } catch (err) {
       console.error('Error generating advisory:', err);

@@ -284,13 +284,16 @@ async def get_ai_reasoning(
             stream=False
         )
         content = completion.choices[0].message.content.strip()
-        # Clean markdown wrappers if any
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        elif content.startswith("```"):
-            content = content[3:-3].strip()
+        
+        import re
+        # Robustly extract JSON block even if the LLM output includes conversational text
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            clean_content = json_match.group(0)
+        else:
+            clean_content = content
             
-        json_data = json.loads(content)
+        json_data = json.loads(clean_content)
         
         mapped_json = {
             "overall_summary_en": json_data.get("overall_summary_en", ""),
