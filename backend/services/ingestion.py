@@ -35,13 +35,18 @@ async def validate_and_ingest(sensor_data: dict):
             mean = np.mean(vals)
             std = np.std(vals)
             
-            # Avoid division by zero
-            if std > 0.1: 
-                z_score = abs(val - mean) / std
-                if z_score > 15.0:  # Z-Score Threshold (Relaxed heavily for hardware testing)
-                    is_valid = False
-                    rejection_reason = f"Corrupted {key}: {val} (Z={z_score:.1f}, Mean={mean:.1f})"
-                    break
+            # Avoid division by zero and oversensitivity when the sensor is highly stable.
+            # By enforcing a minimum std of 2.0, we ensure that small absolute changes 
+            # (like a 5% humidity drop) don't produce massive Z-scores (like Z=18).
+            std_adjusted = max(float(std), 2.0)
+            
+            z_score = abs(val - mean) / std_adjusted
+            if z_score > 15.0:  # Z-Score Threshold (Relaxed heavily for hardware testing)
+                is_valid = False
+                # Calculate actual Z for logging purposes, but check against adjusted Z above
+                actual_z = abs(val - mean) / std if std > 0 else 0
+                rejection_reason = f"Corrupted {key}: {val} (Z={actual_z:.1f}, Mean={mean:.1f})"
+                break
     
     # Hard bounds fallback
     if sensor_data.get("air_temp", 25) > 60 or sensor_data.get("air_temp", 25) < -20:
