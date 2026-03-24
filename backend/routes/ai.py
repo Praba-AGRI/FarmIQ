@@ -114,6 +114,48 @@ async def ai_chat(
         "history_count": len(history_last_14)
     }
     
+    # 2.5 Optional ML Enrichment
+    ml_insights = ""
+    if history_last_14:
+        current_day = history_last_14[-1]
+        feature_sequence = [
+            ai_pipeline.construct_feature_vector(
+                day.get("t_avg", 25), day.get("humidity", 60), day.get("soil_moisture", 50),
+                day.get("et0", 4), day.get("etc", 4), day.get("stage", predicted_stage),
+                field.crop, field.area_acres, day.get("solar_radiation", 15) * 1000
+            ) for day in history_last_14[-14:]
+        ]
+        while len(feature_sequence) < 14:
+            feature_sequence.insert(0, feature_sequence[0])
+            
+        lstm_input = np.array(feature_sequence)
+        irr_prob, irrigation_needed, final_lstm_input = ai_pipeline.predict_irrigation(lstm_input)
+        
+        now = datetime.datetime.now()
+        season = "Kharif" if 6 <= now.month <= 10 else "Rabi"
+        temp = current_day.get("t_avg", 25)
+        humidity = current_day.get("humidity", 60)
+        
+        disease_risk, pest_input = ai_pipeline.predict_pests(
+            field.crop, predicted_stage, season, temp, humidity
+        )
+        
+        nut_pred, nutrient_input = ai_pipeline.predict_nutrients(
+            field.crop, predicted_stage, field.area_acres
+        )
+        
+        ml_insights = f"""
+    ML Pipeline Live Predictions:
+    - Irrigation Necessity Confidence: {round(float(irr_prob) * 100, 1)}%
+    - Disease Risk Assessment: {disease_risk}
+    - NPK Recommendations (kg): N={round(float(nut_pred[0]), 1)}, P={round(float(nut_pred[1]), 1)}, K={round(float(nut_pred[2]), 1)}
+    
+    Use these deep learning insights when answering questions. If explaining recommendations, refer to the ML probability/risk factors.
+        """
+    
+    # Translate iso code to full language name
+    target_language = "Tamil" if farmer_profile['preferred_language'] == "ta" else "English"
+    
     # 3. Call the reasoning layer (Endpoint B)
     # Using NVIDIA client for Chat instead of old Gemini prompt inside reasoning_agri_assistant
     client = getattr(request.app.state, "nvidia_client", None)
@@ -127,8 +169,9 @@ async def ai_chat(
     Farmer Profile: {json.dumps(farmer_profile)}
     Field Context: Crop: {field.crop}, Stage: {predicted_stage}, Area: {field.area_acres} acres.
     Real-time Sensor Data: {json.dumps(sensor_data)}
+    {ml_insights}
     
-    You have access to the recent conversation history with this farmer. Answer their question directly, clearly, and in a friendly tone. Maintain context from previous messages if relevant. Use local farming terminology if helpful. Language: {farmer_profile['preferred_language']}.
+    You have access to the recent conversation history with this farmer. Answer their question directly, clearly, and in a friendly tone. Maintain context from previous messages if relevant. Use local farming terminology if helpful. You MUST respond in {target_language}.
     """
     
     # Load recent chat history for memory context (last 10 messages)
