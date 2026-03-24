@@ -171,22 +171,24 @@ const ChatInterface = ({ fieldId }) => {
                 : 'bg-white text-gray-800 border border-gray-200'
                 }`}
             >
-              <div className={`text-sm ${msg.type === 'user' ? 'text-white' : 'text-gray-800 markdown-body'}`}>
+              <div className={`text-sm ${msg.type === 'user' ? 'text-white' : 'text-gray-800'}`}>
                 {msg.type === 'ai' ? (
-                  <ReactMarkdown
-                    components={{
-                      p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                      ul: ({ node, ...props }) => <ul className="list-disc ml-4 mb-2" {...props} />,
-                      ol: ({ node, ...props }) => <ol className="list-decimal ml-4 mb-2" {...props} />,
-                      li: ({ node, ...props }) => <li className="mb-1" {...props} />,
-                      h1: ({ node, ...props }) => <h1 className="text-lg font-bold mb-2" {...props} />,
-                      h2: ({ node, ...props }) => <h2 className="text-base font-bold mb-2" {...props} />,
-                      h3: ({ node, ...props }) => <h3 className="text-sm font-bold mb-1" {...props} />,
-                      strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
-                    }}
-                  >
-                    {msg.message}
-                  </ReactMarkdown>
+                  <div className="markdown-container">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-relaxed" {...props} />,
+                        ul: ({ node, ...props }) => <ul className="list-disc ml-5 mb-3 space-y-1" {...props} />,
+                        ol: ({ node, ...props }) => <ol className="list-decimal ml-5 mb-3 space-y-1" {...props} />,
+                        li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                        h1: ({ node, ...props }) => <h1 className="text-xl font-bold mb-3 mt-4 border-b pb-1" {...props} />,
+                        h2: ({ node, ...props }) => <h2 className="text-lg font-bold mb-2 mt-4" {...props} />,
+                        h3: ({ node, ...props }) => <h3 className="text-md font-bold mb-2 mt-3 text-primary-700" {...props} />,
+                        strong: ({ node, ...props }) => <strong className="font-bold text-gray-900" {...props} />,
+                      }}
+                    >
+                      {msg.message.replace(/([^\n])### /g, '$1\n\n### ').replace(/([^\n])- /g, '$1\n- ')}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   msg.message
                 )}

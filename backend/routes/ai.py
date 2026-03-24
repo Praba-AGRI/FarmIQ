@@ -171,7 +171,11 @@ async def ai_chat(
     Real-time Sensor Data: {json.dumps(sensor_data)}
     {ml_insights}
     
-    You have access to the recent conversation history with this farmer. Answer their question directly, clearly, and in a friendly tone. Maintain context from previous messages if relevant. Use local farming terminology if helpful. You MUST respond in {target_language}.
+    CRITICAL INSTRUCTIONS: 
+    1. You have access to the recent conversation history with this farmer. Answer their question directly, clearly, and in a friendly tone. 
+    2. Maintain context from previous messages if relevant. Use local farming terminology if helpful. 
+    3. You MUST respond in {target_language}.
+    4. FORMATTING: You MUST format your response using proper Markdown. Absolutely ALWAYS use line breaks (`\n`) to separate paragraphs, headers (###), and bullet points (-). Do not cluster your response into a single block of text.
     """
     
     # Load recent chat history for memory context (last 10 messages)
