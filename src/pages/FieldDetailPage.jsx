@@ -330,6 +330,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
     { id: 'recommendations', label: t('recommendations') },
     { id: 'weather', label: t('weatherAlerts') },
     { id: 'transparency', label: t('transparency') },
+    { id: 'ai_chat', label: t('aiReasoning') || 'AI Chat' },
     { id: 'market_advisory', label: 'Market Advisory' },
   ];
 
@@ -665,6 +666,7 @@ const FieldDetailPage = ({ demoMode = false }) => {
             {activeTab === 'recommendations' && field.id && <RecommendationsTab fieldId={String(field.id)} />}
             {activeTab === 'weather' && field.id && <WeatherTab fieldId={String(field.id)} location={field.location} demoMode={demoMode} />}
             {activeTab === 'transparency' && field.id && <TransparencyTab fieldId={String(field.id)} />}
+            {activeTab === 'ai_chat' && field.id && <AIChatTab fieldId={String(field.id)} />}
             {activeTab === 'market_advisory' && field.id && <MarketAdvisoryTab fieldId={String(field.id)} />}
           </div>
         </div>

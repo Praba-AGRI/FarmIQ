@@ -128,16 +128,25 @@ async def ai_chat(
     Field Context: Crop: {field.crop}, Stage: {predicted_stage}, Area: {field.area_acres} acres.
     Real-time Sensor Data: {json.dumps(sensor_data)}
     
-    Answer the user's question directly, clearly, and in a friendly tone. Use local farming terminology if helpful. Language: {farmer_profile['preferred_language']}.
+    You have access to the recent conversation history with this farmer. Answer their question directly, clearly, and in a friendly tone. Maintain context from previous messages if relevant. Use local farming terminology if helpful. Language: {farmer_profile['preferred_language']}.
     """
+    
+    # Load recent chat history for memory context (last 10 messages)
+    chat_data = load_json("chat_history.json")
+    field_history = chat_data.get(field_id, [])
+    memory_messages = []
+    
+    # Take up to the last 10 messages for memory (5 pairs)
+    for msg in field_history[-10:]:
+        role = "assistant" if msg.get("type") == "ai" else "user"
+        memory_messages.append({"role": role, "content": msg.get("message", "")})
+    
+    api_messages = [{"role": "system", "content": system_prompt}] + memory_messages + [{"role": "user", "content": message.message}]
     
     try:
         completion = client.chat.completions.create(
             model="meta/llama-3.3-70b-instruct",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message.message}
-            ],
+            messages=api_messages,
             temperature=0.5,
             top_p=0.8,
             max_tokens=512,
@@ -149,7 +158,6 @@ async def ai_chat(
         ai_response = "Sorry, I am having trouble connecting to my AI brain at the moment."
     
     # 4. Save chat history
-    chat_data = load_json("chat_history.json")
     if field_id not in chat_data:
         chat_data[field_id] = []
     
